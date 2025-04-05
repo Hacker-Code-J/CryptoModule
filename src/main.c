@@ -14,7 +14,7 @@ int main(void)
     /* 2) Acquire AES vtable. */
     const BlockCipherApi *aes_api = get_aes_api();
     if (!aes_api) {
-        printf("AES API not available.\n");
+        printf("No AES API available.\n");
         cryptomodule_cleanup();
         return 1;
     }
@@ -25,15 +25,17 @@ int main(void)
     clear_ctx(&ctx);
 
     /* 16-byte key for AES-128 example. */
-    uint8_t key[16] = {
-        0xAA,0xBB,0xCC,0xDD, 0xEE,0xFF,0x00,0x11,
-        0x22,0x33,0x44,0x55, 0x66,0x77,0x88,0x99
-    };
+    // 32-byte key for AES-256
+    uint8_t key[32] = {
+        0x00,0x01,0x02,0x03, 0x04,0x05,0x06,0x07,
+        0x08,0x09,0x0A,0x0B, 0x0C,0x0D,0x0E,0x0F,
+        0x10,0x11,0x12,0x13, 0x14,0x15,0x16,0x17,
+        0x18,0x19,0x1A,0x1B, 0x1C,0x1D,0x1E,0x1F
+     };
 
     /* 4) Initialize AES. */
-    if (aes_api->init(&ctx, key, sizeof(key)) != 0) {
-        printf("AES init failed.\n");
-        cryptomodule_cleanup();
+    if (aes_api->init(&ctx, 16, key, 32) != 0) {
+        printf("AES init failed (maybe invalid block/key size)\n");
         return 1;
     }
 
@@ -56,9 +58,7 @@ int main(void)
     printf("Decrypted : %s\n", decrypted);
 
     /* 6) Dispose AES context. */
-    if (aes_api->dispose) {
-        aes_api->dispose(&ctx);
-    }
+    if (aes_api->dispose) aes_api->dispose(&ctx);
 
     /* 7) Cleanup cryptomodule. */
     cryptomodule_cleanup();

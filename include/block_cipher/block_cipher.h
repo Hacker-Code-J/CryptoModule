@@ -1,9 +1,9 @@
 /* File: include/block_cipher/block_cipher.h */
+
+#include "../api.h"
+
 #ifndef BLOCK_CIPHER_H
 #define BLOCK_CIPHER_H
-
-#include <stddef.h>
-#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,86 +17,60 @@ typedef struct BlockCipherContext BlockCipherContext;
  * We'll name it `BlockCipherApi`.
  */
 typedef struct BlockCipherApi {
-    const char *name;           /* e.g. "AES" */
-    size_t      block_size;     /* typically 16 for AES */
-    size_t      key_size;       /* e.g. 16 for AES-128, or dynamic */
+    const char *name; /* e.g. "AES" or "MyCipher" */
 
-    /* Initialize the cipher context with a key. */
-    int  (*init)(BlockCipherContext *ctx, const uint8_t *key, size_t key_len);
+    /*
+     * Initialize the cipher with the chosen block size and key.
+     * If the algorithm only supports certain block sizes (e.g., 16 bytes) 
+     * or certain key lengths, it can reject others with a return code.
+     */
+    int (*init)(
+        BlockCipherContext* ctx,
+        size_t block_size,
+        const u8* key,
+        size_t key_len
+    );
 
     /* Encrypt exactly one block. */
-    void (*encrypt_block)(BlockCipherContext *ctx,
-                          const uint8_t *plaintext,
-                          uint8_t *ciphertext);
+    void (*encrypt_block)(
+        BlockCipherContext* ctx,
+        const u8* plaintext,
+        u8* ciphertext
+    );
 
     /* Decrypt exactly one block. */
-    void (*decrypt_block)(BlockCipherContext *ctx,
-                          const uint8_t *ciphertext,
-                          uint8_t *plaintext);
+    void (*decrypt_block)(
+        BlockCipherContext* ctx,
+        const u8* ciphertext,
+        u8* plaintext
+    );
 
     /* Clean up resources, if needed. */
-    void (*dispose)(BlockCipherContext *ctx);
+    void (*dispose)(
+        BlockCipherContext* ctx
+    );
 
 } BlockCipherApi;
 
+/* 
+ * The context object holds internal state. Different ciphers may store differently.
+ * The first field must be a pointer to the vtable for the chosen cipher.
+ */
 /* The context structure storing state. */
 struct BlockCipherContext {
     const BlockCipherApi *api;  
-    uint8_t internal_data[256]; /* Example placeholder for key schedule, etc. */
+    u8 internal_data[256]; /* Example placeholder for key schedule, etc. */
 };
+
+/* For usage:
+   1) Acquire a pointer to a specific BlockCipherApi (AES, ARIA, LEA).
+   2) Create a BlockCipherContext and call api->init(...).
+   3) Then call encrypt_block/decrypt_block as needed.
+   4) Finally call dispose(...) if the cipher requires cleanup.
+*/
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* BLOCK_CIPHER_H */
-
-
-
-// const BlockCipherApi *aes_api = get_aes_api();
-
-// /* Forward declaration for a block cipher context (private). */
-// typedef struct BlockCipherContext BlockCipherContext;
-
-// /* The function pointer table describing any block cipher. */
-// typedef struct BlockCipherApi {
-//     const char *name;
-//     size_t      block_size;
-//     size_t      key_size;
-
-//     /* Initialize the cipher context with a given key (and maybe rounds, etc.). */
-//     int  (*init)(BlockCipherContext *ctx, const uint8_t *key, size_t key_len);
-
-//     /* Encrypt exactly one block (in-place or out-of-place). */
-//     void (*encrypt_block)(BlockCipherContext *ctx,
-//                           const uint8_t *plaintext,
-//                           uint8_t *ciphertext);
-
-//     /* Decrypt exactly one block. */
-//     void (*decrypt_block)(BlockCipherContext *ctx,
-//                           const uint8_t *ciphertext,
-//                           uint8_t *plaintext);
-
-//     /* Cleanup or free resources if needed. */
-//     void (*dispose)(BlockCipherContext *ctx);
-// } BlockCipherApi;
-
-// /* The context object holds internal state. Different ciphers may store differently. */
-// struct BlockCipherContext {
-//     const BlockCipherApi *api;  /* points to the vtable for the chosen cipher */
-//     /* followed by cipher-specific fields */
-//     uint8_t internal_data[256]; /* Example placeholder for storing S-boxes, round keys, etc. */
-// };
-
-// /* For usage:
-//    1) Acquire a pointer to a specific BlockCipherApi (AES, ARIA, LEA).
-//    2) Create a BlockCipherContext and call api->init(...).
-//    3) Then call encrypt_block/decrypt_block as needed.
-//    4) Finally call dispose(...) if the cipher requires cleanup.
-// */
-
-// #ifdef __cplusplus
-// }
-// #endif
-
-// #endif /* BLOCK_CIPHER_H */

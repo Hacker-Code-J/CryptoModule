@@ -8,9 +8,13 @@
  * This file aggregates all relevant algorithm headers into a single include.
  * ---------------------------------------------------------------------------*/
 
-#include <stdio.h>
-#include <string.h>
-#include <stdint.h>
+#include <stdio.h>      // For FILE
+#include <stdlib.h>     // For malloc, free
+#include <stdbool.h>    // For bool
+#include <assert.h>     // For assert
+#include <string.h>     // For memcpy, memset
+#include <stdint.h>     // For uint8_t, uint32_t, etc.
+#include <stddef.h>     // For size_t
 
 typedef int8_t     i8;
 typedef int32_t    i32;
@@ -37,10 +41,11 @@ cryptomodule_status_t cryptomodule_init(void);
 cryptomodule_status_t cryptomodule_cleanup(void);
 
 /* Block ciphers */
-#include "include/block_cipher/block_cipher.h"
-#include "include/block_cipher/block_cipher_aes.h"
+#include "block_cipher/block_cipher.h"
+#include "block_cipher/block_cipher_aes.h"
 
 /* Modes of operation */
+#include "mode/mode.h"
 // #include "ecb.h"
 // #include "cbc.h"
 // #include "ctr.h"
