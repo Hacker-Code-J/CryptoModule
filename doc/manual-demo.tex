@@ -1,0 +1,277 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\geometry{
+    left=25mm,
+    right=25mm,
+    top=25mm,
+    bottom=25mm
+}
+
+% For styled code listings
+\lstset{
+    basicstyle=\small\ttfamily,
+    keywordstyle=\color{blue}\bfseries,
+    stringstyle=\color{purple},
+    commentstyle=\color{gray}\itshape,
+    columns=fullflexible,
+    keepspaces=true,
+    breaklines=true,
+    showstringspaces=false,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+}
+
+\title{\textbf{CryptoModule Development Manual}}
+\author{Cryptographic Algorithm / Ji, Yong-hyeon}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+\clearpage
+
+\section{Introduction}
+\label{sec:introduction}
+This manual describes how to develop, build, and maintain the \texttt{CryptoModule}---a C-based cryptographic library that provides various cryptographic algorithms, modes of operation, and utility functions. This manual is intended for developers who plan to modify, extend, or integrate the library.
+
+\subsection{Project Overview}
+\texttt{CryptoModule} is designed to be modular and easily extendable. It includes:
+\begin{itemize}
+    \item Block Ciphers (AES, ARIA, LEA)
+    \item Modes of Operation (ECB, CBC, CTR, GCM)
+    \item Random Number Generators (CTR-DRBG)
+    \item Hash Functions (SHA2, SHA3, LSH)
+    \item Message Authentication Codes (HMAC)
+    \item Key Derivation Functions (PBKDF)
+    \item Key Setup (EC / DH)
+    \item Signatures (RSAPSS, ECDSA, EC-KCDSA)
+\end{itemize}
+
+\section{Directory Structure}
+\label{sec:directory-structure}
+To keep the repository consistent and intuitive, the code is subdivided by cryptographic category. The typical structure:
+
+% \begin{lstlisting}[language={},caption={Directory Layout}]
+% CryptoModule/
+% ������ include/
+% ��   ������ cryptomodule/
+% ��       ������ block/
+% ��       ��   ������ aes.h
+% ��       ��   ������ aria.h
+% ��       ��   ������ lea.h
+% ��       ������ mode/
+% ��       ��   ������ ecb.h
+% ��       ��   ������ cbc.h
+% ��       ��   ������ ctr.h
+% ��       ��   ������ gcm.h
+% ��       ������ rng/
+% ��       ��   ������ ctr_drbg.h
+% ��       ������ hash/
+% ��       ��   ������ sha2.h
+% ��       ��   ������ sha3.h
+% ��       ��   ������ lsh.h
+% ��       ������ mac/
+% ��       ��   ������ hmac.h
+% ��       ������ kdf/
+% ��       ��   ������ pbkdf.h
+% ��       ������ keysetup/
+% ��       ��   ������ ecdh.h
+% ��       ������ sign/
+% ��           ������ rsapss.h
+% ��           ������ ecdsa.h
+% ��           ������ eckcdsa.h
+% ������ src/
+% ��   ������ block/
+% ��   ��   ������ aes.c
+% ��   ��   ������ aria.c
+% ��   ��   ������ lea.c
+% ��   ������ mode/
+% ��   ��   ������ ecb.c
+% ��   ��   ������ cbc.c
+% ��   ��   ������ ctr.c
+% ��   ��   ������ gcm.c
+% ��   ������ rng/
+% ��   ��   ������ ctr_drbg.c
+% ��   ������ hash/
+% ��   ��   ������ sha2.c
+% ��   ��   ������ sha3.c
+% ��   ��   ������ lsh.c
+% ��   ������ mac/
+% ��   ��   ������ hmac.c
+% ��   ������ kdf/
+% ��   ��   ������ pbkdf.c
+% ��   ������ keysetup/
+% ��   ��   ������ ecdh.c
+% ��   ������ sign/
+% ��       ������ rsapss.c
+% ��       ������ ecdsa.c
+% ��       ������ eckcdsa.c
+% ������ tests/
+% ��   ������ test_aes.c
+% ��   ������ test_gcm.c
+% ��   ������ test_main.c
+% ������ Makefile
+% ������ README.md
+% \end{lstlisting}
+
+\subsection{Key Folders}
+\begin{description}
+    \item[\texttt{include/cryptomodule/}] Public-facing headers, grouped by cryptographic function (block, mode, rng, etc.). Clients of the library typically include these header files.
+    \item[\texttt{src/}] Implementation (.c) files for each algorithm or mode.
+    \item[\texttt{tests/}] Minimal test suite or unit test code. Each \texttt{test\_*.c} can be compiled and run to validate correctness.
+    \item[\texttt{Makefile}] A simple top-level build system that compiles objects and creates the static library \texttt{libcryptomodule.a}, plus test executables.
+\end{description}
+
+\section{Build and Usage}
+\label{sec:build-usage}
+
+\subsection{Building the Library}
+A simple \texttt{Makefile} is provided. Type:
+\begin{lstlisting}[language=bash]
+make
+\end{lstlisting}
+This will build all objects in \texttt{build/obj/} (or a similar location), archive them into \texttt{libcryptomodule.a}, and place test executables in \texttt{build/bin/}.
+
+\subsection{Running Tests}
+After running \texttt{make}, you can run:
+\begin{lstlisting}[language=bash]
+make test
+make run-tests
+\end{lstlisting}
+to compile test files and optionally execute them. The \texttt{run-tests} target (if implemented) loops over each test binary, outputting pass/fail status.
+
+\subsection{Linking and Using the Library}
+In your own C program:
+\begin{lstlisting}[language=C]
+#include <stdio.h>
+#include <cryptomodule/block/aes.h>
+#include <cryptomodule/mode/gcm.h>
+
+int main(void) {
+    // Example usage
+    // e.g. set up AES key, GCM mode, etc.
+    return 0;
+}
+\end{lstlisting}
+Then compile and link:
+\begin{lstlisting}[language=bash]
+gcc -I./include -L. -lcryptomodule my_app.c -o my_app
+\end{lstlisting}
+Adjust as needed for your directory paths. The library name may be placed under \texttt{-L./build/lib} if you store artifacts there.
+
+\section{Development Guidelines}
+\label{sec:dev-guidelines}
+
+\subsection{Style and Naming Conventions}
+\begin{itemize}
+    \item \textbf{Functions and Variables}: Use lowercase with underscores for internal helper functions. Exported (public) functions should have a prefix, e.g. \texttt{aes\_encrypt()}, \texttt{gcm\_init()}, etc.
+    \item \textbf{Headers}: Each cryptographic feature has a matching \texttt{.h} / \texttt{.c} pair named consistently in the appropriate subdirectory.
+    \item \textbf{Indentation}: Typically 4 spaces, no hard tabs.
+\end{itemize}
+
+\subsection{Contributing a New Algorithm}
+If you want to add a new block cipher, for example:
+\begin{enumerate}
+    \item Create \texttt{mycipher.h} in \texttt{include/cryptomodule/block/}.
+    \item Place the implementation in \texttt{mycipher.c} under \texttt{src/block/}.
+    \item Add references to it in the main \texttt{Makefile} (or rely on wildcard if used).
+    \item Write minimal test code in \texttt{tests/test\_mycipher.c} for coverage.
+\end{enumerate}
+
+\subsection{Testing and Validation}
+Test each block cipher, mode, or function individually. Some recommended steps:
+\begin{itemize}
+    \item \textbf{Unit tests}: Confirm core functionality. E.g., check known test vectors for AES, HMAC, etc.
+    \item \textbf{Integration tests}: For example, test AES + GCM end-to-end encryption/decryption with known vectors.
+    \item \textbf{Continuous Integration (CI)}: If you host on a platform that supports CI, set up automatic builds and tests for each commit / pull request.
+\end{itemize}
+
+\section{Example Makefile Snippet}
+\label{sec:makefile-snippet}
+
+A simplified snippet is shown below, grouping the relevant source files:
+
+\begin{lstlisting}[language=make,caption={Sample Makefile Snippet}]
+CC          = gcc
+AR          = ar
+RANLIB      = ranlib
+CFLAGS      = -O2 -Wall -I./include
+LIB_NAME    = libcryptomodule.a
+
+BUILD_DIR   = build
+OBJ_DIR     = $(BUILD_DIR)/obj
+BIN_DIR     = $(BUILD_DIR)/bin
+
+BLOCK_SRCS   = $(wildcard src/block/*.c)
+MODE_SRCS    = $(wildcard src/mode/*.c)
+RNG_SRCS     = $(wildcard src/rng/*.c)
+HASH_SRCS    = $(wildcard src/hash/*.c)
+MAC_SRCS     = $(wildcard src/mac/*.c)
+KDF_SRCS     = $(wildcard src/kdf/*.c)
+KEYSETUP_SRCS= $(wildcard src/keysetup/*.c)
+SIGN_SRCS    = $(wildcard src/sign/*.c)
+
+SRCS_ALL     = $(BLOCK_SRCS) $(MODE_SRCS) $(RNG_SRCS) \
+                $(HASH_SRCS)  $(MAC_SRCS)  $(KDF_SRCS) \
+                $(KEYSETUP_SRCS) $(SIGN_SRCS)
+OBJS_ALL     = $(patsubst src/%.c,$(OBJ_DIR)/%.o,$(SRCS_ALL))
+
+TEST_SRCS    = $(wildcard tests/*.c)
+TEST_OBJS    = $(patsubst tests/%.c,$(OBJ_DIR)/%.o,$(TEST_SRCS))
+TEST_BINS    = $(patsubst tests/%.c,$(BIN_DIR)/%,$(TEST_SRCS))
+
+.PHONY: all clean test run-tests
+
+all: $(LIB_NAME) test
+
+$(LIB_NAME): $(OBJS_ALL)
+    $(AR) rcs $@ $^
+    $(RANLIB) $@
+
+$(OBJ_DIR)/%.o: src/%.c
+    @mkdir -p $(dir $@)
+    $(CC) $(CFLAGS) -c $< -o $@
+
+test: $(TEST_BINS)
+
+$(OBJ_DIR)/%.o: tests/%.c
+    @mkdir -p $(dir $@)
+    $(CC) $(CFLAGS) -c $< -o $@
+
+$(BIN_DIR)/%: $(OBJ_DIR)/%.o $(LIB_NAME)
+    @mkdir -p $(BIN_DIR)
+    $(CC) $(CFLAGS) $< -o $@ -L. -lcryptomodule
+
+run-tests: test
+    @for t in $(TEST_BINS); do echo "Running $$t..."; $$t || exit 1; done
+
+clean:
+    rm -rf $(BUILD_DIR) $(LIB_NAME)
+\end{lstlisting}
+
+\section{Security Considerations}
+\label{sec:security}
+\begin{itemize}
+    \item This library is intended as a reference or a building block. For production use, ensure the code is reviewed, tested, and validated for your environment.
+    \item Keep in mind side-channel leaks, secure memory wiping, and other cryptographic best practices.
+\end{itemize}
+
+\section{Acknowledgments \& Contact}
+\label{sec:acknowledgments}
+We appreciate any contributions, bug reports, or improvements. If you find issues, please open an issue or contact the maintainers.
+
+\vfill
+\begin{center}
+\textbf{End of Document}
+\end{center}
+
+\end{document}
