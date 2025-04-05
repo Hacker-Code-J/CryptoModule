@@ -1,0 +1,432 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Quantum-Safe Cryptography Report: Building & Installing New Signature Algorithm
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[11pt,a4paper]{report}
+
+%-------------------------
+% Package Imports
+%-------------------------
+\usepackage[margin=1in]{geometry}            % Page margins
+\usepackage{graphicx}                        % Images and logos
+\usepackage{titlesec}                        % Custom section formatting
+\usepackage{fancyhdr}                        % Headers and footers
+\usepackage{setspace}                        % Line spacing
+\usepackage{hyperref}                        % Hyperlinks
+\usepackage{enumitem}                        % Customized lists
+\usepackage{lmodern}                         % Enhanced fonts
+\usepackage{xcolor}                          % Color definitions
+\usepackage{array}                           % Table formatting
+\usepackage{listings}                        % For code listings
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,positioning}
+\input{lib/crypto.symbols}
+\usetikzlibrary{trees}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.17}
+
+\usepackage{amsmath, amssymb, amsfonts, amsthm, mathtools}
+\usepackage{commath}
+\usepackage{algorithm, algorithmic}
+\usepackage{tcolorbox}
+\tcbset{colback=white, arc=5pt}
+\newcommand{\defbox}[2][]{%
+	\begin{tcolorbox}[colframe=black, title={\color{white}\bfseries #1}]
+		#2
+	\end{tcolorbox}
+}
+
+\usepackage{adjustbox}
+
+% Fonts
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{newpxtext,newpxmath}
+\usepackage{sectsty}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Theorem, Definition, and Remark Environments
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}{Proposition}[chapter]
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{problem}{Problem}[chapter]
+
+\newtheoremstyle{definitionstyle} % Name of the style
+{3pt} % Space above
+{3pt} % Space below
+{} % Body font
+{} % Indent amount
+{\bfseries} % Theorem head font
+{.} % Punctuation after theorem head
+{2.5mm} % Space after theorem head
+{} % Theorem head spec
+\theoremstyle{definitionstyle}
+\newtheorem*{observation}{\textcolor{Magenta}{Observation}}
+\newtheorem{definition}{Definition}[chapter] % Definition shares the counter with theorem
+\newtheorem{example}{Example}[chapter] % Example shares the counter with theorem
+\newtheorem{exercise}{{Exercise}}[chapter] % Example shares the counter with theorem
+\newtheorem{remark}{Remark}[chapter] % Remark shares the counter with theorem
+%\newtheorem*{note}{Note}[chapter]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Custom Commands for Notation and Symbols
+\newcommand{\bit}{\{0,1\}}
+\newcommand{\GF}{\operatorname{GF}}
+\newcommand{\xor}{\oplus}
+\newcommand{\Cons}{\operatorname{Cons}}
+\newcommand{\E}{\operatorname{E}}
+\newcommand{\Einv}{\operatorname{E}^{-1}}
+\newcommand{\PRP}{\operatorname{PRP}}
+\newcommand{\KeySpace}{\{0,1\}^k}
+\newcommand{\BlockSpace}{\{0,1\}^n}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Ex}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\supp}{\operatorname{supp}}
+\newcommand{\floor}[1]{\lfloor #1 \rfloor}
+\newcommand{\ceil}[1]{\lceil #1 \rceil}
+\newcommand{\AES}{\textsf{AES}}
+
+
+%-------------------------
+% Custom Fonts and Colors
+%-------------------------
+%\allsectionsfont{\sffamily\bfseries}         % Sans-serif, bold section titles
+
+% Define a rule command for the cover page
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
+%-------------------------
+% Listing Settings
+%-------------------------
+\lstset{
+	basicstyle=\footnotesize\ttfamily,
+	breaklines=true,
+	frame=single,
+	columns=fullflexible,
+	captionpos=b,
+	numbers=left
+}
+
+%-------------------------
+% Header & Footer Settings
+%-------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+
+\usepackage{background}
+\backgroundsetup{
+	scale=1,  % Scale the image to fit the page
+	color=black,  % Keep the image color as is
+	opacity=.1,  % Fully opaque background
+	angle=0,  % No rotation
+	%	position=current page.south,  % Align to bottom of the page
+	vshift=1cm,  % Adjust vertical alignment if needed
+	%	hshift=0cm,  % Adjust horizontal alignment if needed
+	contents={}
+}
+\newcommand{\setPageBackground}{
+	\backgroundsetup{
+		contents={\includegraphics[scale=4]{images/school-logo}
+			%		contents={\includegraphics[width=\paperwidth,height=\paperheight]{images/school-logo}
+			} % Replace with your image
+		}
+	}
+
+%-------------------------
+% Title Page Setup
+%-------------------------
+\begin{document}
+\begin{titlepage}
+	\setPageBackground
+	\centering
+	\vspace*{1cm}
+	
+	% Company logo (optional)
+%		\includegraphics[width=0.3\textwidth]{logo.png}\par\vspace{1cm}
+	
+	\HRule \\[0.4cm]
+	{\Huge \sffamily \bfseries Cryptographic S/W Modules with C}\\[0.4cm]
+	\HRule \\[1.5cm]
+	
+	{\Large Design, Implementation, and Integration of Core Crypto Modules}\\[0.5cm]
+	{\normalsize Secure, Efficient, High-Performance Cryptographic Software Modules}\\[2cm]
+	
+	\begin{flushright}
+		\LARGE {\bfseries Ji, Yong-hyeon} \\ 
+		{\Large\texttt{hacker3740@kookmin.ac.kr}} \\[1.5cm]
+		\large Department of Cyber Security \\
+		Kookmin University \\ [1cm]
+		\today
+	\end{flushright}
+	\vfill
+\end{titlepage}
+
+%-------------------------
+% Table of Contents
+%-------------------------
+\tableofcontents
+\clearpage
+
+%-----------------------------------------------------------------------
+%  CHAPTER 1: PROJECT OVERVIEW
+%-----------------------------------------------------------------------
+\chapter{Project Overview}
+%\section{Purpose and Scope}
+
+This document provides a comprehensive guide to the design, implementation, and integration of cryptographic modules written in C (sometimes assembly). 
+%It is intended for developers, security engineers, and maintainers who need to understand the internal structure, coding guidelines, and best practices for working with these modules. By referencing both the C and ASM sources, readers will learn how to optimize cryptographic routines, ensure consistent interfaces, and maintain robust security properties throughout the system.
+\ \\
+\ \\ \noindent
+\textbf{Key Objectives:}
+\begin{itemize}
+	\item Describing the cryptographic primitives and algorithms\par 
+	(block ciphers, hash functions, MACs, signature algorithms, etc.).
+	\item Explaining the structure of the source files and headers.
+	\item Providing guidelines for building, testing, and integrating these modules into larger software systems.
+%	\item Highlighting performance optimization strategies in ASM.
+\end{itemize}
+
+\section{Directory Structure}
+\begin{center}
+\begin{tikzpicture}[%
+	grow via three points={one child at (0.5,-0.7) and
+		two children at (0.5,-0.7) and (0.5,-1.4)},
+	edge from parent path={(\tikzparentnode.south) |- (\tikzchildnode.west)}]
+	\tikzstyle{every node}=[draw=black,thick,anchor=west, 
+	minimum width=2.25cm, minimum height=.6cm]
+	\tikzstyle{selected}=[draw=red,fill=red!30]
+	\tikzstyle{optional}=[dashed,fill=gray!50]
+	\node {CryptoModule/}
+	child { node {bin} }
+	child { node {build} 
+		child { node {\texttt{*.o}} }
+		child { node {\texttt{*.d}} }
+	}
+	child [missing] {}		
+	child [missing] {}
+	child [missing] {}
+	child { node[fill=blue!30, draw=blue] {include}
+		child { node {block\_cipher}
+			child { node {\texttt{block\_cipher.h}} }
+			child { node {\texttt{block\_cipher\_aes.h}} }
+			child { node {$\cdots$} }
+		}
+		child [missing] {}	
+		child [missing] {}		
+		child [missing] {}
+		child { node {mode}
+			child { node {\texttt{mode.h}} }
+			child { node {$\cdots$} }
+		}	
+		child [missing] {}
+		child [missing] {}
+		child { node {$\cdots$} }
+		child { node {\texttt{api.h}} }
+	}	
+	child [missing] {}	
+	child [missing] {}
+	child [missing] {}
+	child [missing] {}	
+	child [missing] {}	
+	child [missing] {}	
+	child [missing] {}	
+	child [missing] {}	
+	child [missing] {}	
+	child [missing] {}	
+	child { node[fill=green!50, draw=green!75!black] {src/}
+		child { node {block\_cipher}
+			child { node {\texttt{block\_cipher\_factory.c}} }
+			child { node {\texttt{block\_cipher\_aes.c}} }
+			child { node {$\cdots$} }
+		}
+		child [missing] {}	
+		child [missing] {}		
+		child [missing] {}
+		child { node {mode}
+			child { node {\texttt{mode\_factory.h}} }
+			child { node {$\cdots$} }
+		}	
+		child [missing] {}
+		child [missing] {}
+		child { node {$\cdots$} }
+		child { node {\texttt{cryptomodule\_core.h}} }
+		child { node {\texttt{main.c}} }
+	}
+	child [missing] {}
+	child [missing] {}	
+	child [missing] {}	
+	child [missing] {}	
+	child [missing] {}	
+	child [missing] {}	
+	child [missing] {}	
+	child [missing] {}	
+	child [missing] {}	
+	child [missing] {}	
+	child [missing] {}	
+	child { node[fill=cyan!50, draw=cyan] {tests/} }
+	child { node[fill=orange!50, draw=orange] {\texttt{Makefile}} }
+	;
+\end{tikzpicture}
+\end{center}
+The code base is organized to reflect modular cryptographic primitives and functionality. The main directories and their purposes are outlined below:
+
+\begin{itemize}
+	\item \textbf{include/}: Contains all public headers for cryptographic modules.
+	\begin{itemize}
+		\item \texttt{cryptomodule/block/}: Headers for block cipher implementations (e.g., AES).
+		\item \texttt{cryptomodule/mode/}: Headers for modes of operation (CBC, CTR, GCM, etc.).
+		\item \texttt{cryptomodule/rng/}: Headers for random number generators.
+		\item \texttt{cryptomodule/hash/}: Headers for hash functions (e.g., SHA-256, SHA-512).
+		\item \texttt{cryptomodule/mac/}: Headers for message authentication codes (e.g., HMAC).
+		\item \texttt{cryptomodule/kdf/}: Headers for key derivation functions (PBKDF, HKDF, etc.).
+		\item \texttt{cryptomodule/keysetup/}: Headers for key exchange primitives (ECDH).
+		\item \texttt{cryptomodule/sign/}: Headers for signature algorithms (ECDSA, RSA, etc.).
+	\end{itemize}
+	
+	\item \textbf{src/}: Contains the corresponding C/ASM source files for each cryptographic category.
+	\begin{itemize}
+		\item \texttt{block/}, \texttt{mode/}, \texttt{rng/}, \texttt{hash/}, \texttt{mac/}, \texttt{kdf/}, \texttt{keysetup/}, \texttt{sign/}
+	\end{itemize}
+	
+	\item \textbf{tests/}: Houses unit tests and integration tests for all cryptographic modules.
+	
+	\item \textbf{Makefile}: Defines how to build and link the libraries and tests. Contains flags for C and ASM code.
+	
+	\item \textbf{README.md}: Provides a high-level overview of the project, including build instructions and usage examples.
+\end{itemize}
+
+\subsection{Hierarchy and Relationships}
+
+Each functional category (block cipher, hash, etc.) is encapsulated in its own subdirectory to keep code organized and maintainable. Corresponding header files in \texttt{include/cryptomodule/} expose the public API, while the implementations in \texttt{src/} include both C and, where appropriate, ASM files for optimized routines.
+
+\section{Build Tools and Dependencies}
+
+A standard Unix-like build environment is assumed, with the following tools and dependencies required:
+
+\begin{itemize}
+	\item \textbf{Compiler} (e.g., \texttt{gcc} or \texttt{clang}) with support for assembling inline or separate ASM files.
+	\item \textbf{Make} (GNU Make) to use the provided \texttt{Makefile}.
+	\item \textbf{CMake (optional)}: Some teams prefer CMake-based workflows; a \texttt{CMakeLists.txt} can also be maintained for cross-platform compatibility.
+	\item \textbf{Perl/Python (optional)}: May be required for certain test scripts, code generation, or performance analysis scripts.
+	\item \textbf{OpenSSL (optional)}: Useful for comparing test vectors or for using the system’s cryptographic library as a reference.
+\end{itemize}
+
+When building the library, you can enable or disable specific optimizations or algorithms by modifying the \texttt{Makefile} (or \texttt{CMakeLists.txt}, if you choose to add one). For instance, enabling ASM routines for AES might require additional flags like:
+\begin{lstlisting}
+	CFLAGS += -march=native -maes
+\end{lstlisting}
+depending on your target CPU capabilities.
+
+\subsection{Environment Configuration}
+
+Before compiling, ensure that your development environment is set up with the correct paths. For instance:
+\begin{lstlisting}
+	export CC=gcc
+	export AS=nasm     # or another assembler if preferred
+	export CFLAGS="-O2 -Wall -Wextra"
+\end{lstlisting}
+Adjust these variables as needed based on your local toolchain and performance requirements.
+
+\section{Coding Guidelines}
+
+All C code should follow a consistent style (e.g., \texttt{K\&R} or \texttt{LLVM} style) with adequate comments explaining the purpose and usage of functions. Inline ASM or standalone ASM files should use readable label names, and macros must be well-documented to clarify any platform-specific instructions.
+
+Furthermore, each function in the cryptographic modules should include:
+\begin{itemize}
+	\item \textbf{Parameter validations}: Ensure pointers are not \texttt{NULL}, lengths are within expected ranges, etc.
+	\item \textbf{Error handling}: Return clear error codes and avoid silent failures.
+	\item \textbf{Security considerations}: Erase sensitive data buffers immediately after use to prevent leakage.
+\end{itemize}
+
+\section{Security and Maintenance Policies}
+
+Because cryptographic libraries are critical to overall system security, the project maintains strict policies regarding:
+\begin{itemize}
+	\item \textbf{Patch review}: All code changes are peer-reviewed to detect potential vulnerabilities or performance regressions.
+	\item \textbf{Regular audits}: Scheduled internal and external audits are conducted to verify compliance with best security practices.
+	\item \textbf{Versioning and backward compatibility}: Each stable release is tagged in version control, with major version increments for breaking changes.
+\end{itemize}
+
+\chapter{Cryptographic Module}
+
+%-----------------------------------------------------------------------
+%  CHAPTER 2: BLOCK CIPHER MODULES (Placeholder)
+%-----------------------------------------------------------------------
+\section{Block Cipher Modules}
+% Detailed content about supported block ciphers, usage examples, ASM optimizations
+
+%-----------------------------------------------------------------------
+%  CHAPTER 3: MODES OF OPERATION (Placeholder)
+%-----------------------------------------------------------------------
+\section{Modes of Operation}
+% Detailed content about CBC, CTR, GCM, etc.
+
+%-----------------------------------------------------------------------
+%  CHAPTER 4: RANDOM NUMBER GENERATOR (Placeholder)
+%-----------------------------------------------------------------------
+\section{Random Number Generator}
+% Implementation details, entropy sources, usage examples
+
+%-----------------------------------------------------------------------
+%  CHAPTER 5: HASH FUNCTIONS (Placeholder)
+%-----------------------------------------------------------------------
+\section{Hash Functions}
+% Implementation details, supported hashes, ASM notes
+
+%-----------------------------------------------------------------------
+%  CHAPTER 6: MESSAGE AUTHENTICATION CODES (Placeholder)
+%-----------------------------------------------------------------------
+\section{Message Authentication Codes}
+% Content about HMAC, CMAC, usage examples, best practices
+
+%-----------------------------------------------------------------------
+%  CHAPTER 7: KEY DERIVATION FUNCTIONS (Placeholder)
+%-----------------------------------------------------------------------
+\section{Key Derivation Functions}
+% PBKDF, HKDF, usage in password hashing or key expansions
+
+%-----------------------------------------------------------------------
+%  CHAPTER 8: KEY EXCHANGE (Placeholder)
+%-----------------------------------------------------------------------
+\section{Key Exchange}
+% ECDH, DH, usage details, integration
+
+%-----------------------------------------------------------------------
+%  CHAPTER 9: SIGNATURE ALGORITHMS (Placeholder)
+%-----------------------------------------------------------------------
+\section{Signature Algorithms}
+% ECDSA, RSA, usage patterns, performance tips
+
+%-----------------------------------------------------------------------
+%  CHAPTER 3: BUILD AND INTEGRATION (Placeholder)
+%-----------------------------------------------------------------------
+\chapter{Build and Integration}
+% Makefile overview, linking instructions, library creation
+
+%-----------------------------------------------------------------------
+%  CHAPTER 4: TESTING (Placeholder)
+%-----------------------------------------------------------------------
+\chapter{Testing}
+% Unit tests, integration tests, reference vectors
+
+%%-----------------------------------------------------------------------
+%%  CHAPTER 5: FAQ / TROUBLESHOOTING (Placeholder)
+%%-----------------------------------------------------------------------
+%\chapter{FAQ / Troubleshooting}
+%% Common errors, solutions, performance tuning
+
+\newpage
+\appendix
+%-----------------------------------------------------------------------
+%  CHAPTER 13: APPENDICES (Placeholder)
+%-----------------------------------------------------------------------
+\chapter*{Appendices}
+% Glossary, references, external documentation
+\end{document}
