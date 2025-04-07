@@ -34,8 +34,7 @@
  */
 
 /* File: src/block_cipher/block_cipher_aes.c */
-
-#include "../../include/block_cipher/block_cipher.h"
+#include "../../include/block_cipher/block_cipher_aes.h"
 
 /* Forward declarations of static functions. */
 static int  aes_init(BlockCipherContext *ctx, size_t block_size, const u8 *key, size_t key_len);
@@ -105,97 +104,36 @@ typedef struct AesInternal {
 } AesInternal;
 
 /* Forward declarations of static functions. */
-static int aes_enc_key_expansion(AesInternal* st, const u8* user_key, u32* out);   //  AES Encryption Key Expansion
-// static int aes_dec_key_expansion(AesInternal* st, const u8* user_key, u8* out);   //  AES Decryption Key Expansion
+int aes_enc_key_expansion(AesInternal* st, const u8* in, u32* out);   //  AES Encryption Key Expansion
+// static int aes_dec_key_expansion(AesInternal* st, const u8* in, u8* out);   //  AES Decryption Key Expansion
 
 /* ********** AES key expansion functions ********** */
-/* Rotate a word left by 1 byte */
-static inline void rotate_word(u8 w[4]) {
-    u8 tmp = w[0];
-    w[0] = w[1];
-    w[1] = w[2];
-    w[2] = w[3];
-    w[3] = tmp;
-}
-/* Sub each byte in a word with the S-box */
-static inline void sub_word(u8 w[4]) {
-    w[0] = Te4[w[0]];
-    w[1] = Te4[w[1]];
-    w[2] = Te4[w[2]];
-    w[3] = Te4[w[3]];
-}
+int aes_enc_key_expansion(AesInternal* st, const u8* in, u32* out) {
+    if (!st || !in || !out) return -1;
+    if (st->key_len != 16 && st->key_len != 24 && st->key_len != 32) return -1;  /* unsupported key length */
 
-int aes_enc_key_expansion(AesInternal* st, const u8* user_key, u32* out) {
-    int i = 0;
     u32 temp;
+    int i, n;
 
-    out[0] = GETU32(user_key     );
-    out[1] = GETU32(user_key +  4);
-    out[2] = GETU32(user_key +  8);
-    out[3] = GETU32(user_key + 12);
-    if (st->key_len == 128) {
-        while (1) {
-            temp  = out[3];
-            out[4] = out[0] ^
-                (Te2[(temp >> 16) & 0xff] & 0xff000000) ^
-                (Te3[(temp >>  8) & 0xff] & 0x00ff0000) ^
-                (Te0[(temp      ) & 0xff] & 0x0000ff00) ^
-                (Te1[(temp >> 24)       ] & 0x000000ff) ^
-                rcon[i];
-            out[5] = out[1] ^ out[4];
-            out[6] = out[2] ^ out[5];
-            out[7] = out[3] ^ out[6];
-            if (++i == 10) { return 0; }
-            out += 4;
-        } // while
-    } // if
-    out[4] = GETU32(user_key + 16);
-    out[5] = GETU32(user_key + 20);
-    if (st->key_len == 192) {
-        while (1) {
-            temp = out[ 5];
-            out[ 6] = out[ 0] ^
-                (Te2[(temp >> 16) & 0xff] & 0xff000000) ^
-                (Te3[(temp >>  8) & 0xff] & 0x00ff0000) ^
-                (Te0[(temp      ) & 0xff] & 0x0000ff00) ^
-                (Te1[(temp >> 24)       ] & 0x000000ff) ^
-                rcon[i];
-            out[ 7] = out[ 1] ^ out[ 6];
-            out[ 8] = out[ 2] ^ out[ 7];
-            out[ 9] = out[ 3] ^ out[ 8];
-            if (++i == 8) { return 0; }
-            out[10] = out[ 4] ^ out[ 9];
-            out[11] = out[ 5] ^ out[10];
-            out += 6;
-        } // while
-    } // if
-    out[6] = GETU32(user_key + 24);
-    out[7] = GETU32(user_key + 28);
-    if (st->key_len == 256) {
-        while (1) {
-            temp = out[ 7];
-            out[ 8] = out[ 0] ^
-                (Te2[(temp >> 16) & 0xff] & 0xff000000) ^
-                (Te3[(temp >>  8) & 0xff] & 0x00ff0000) ^
-                (Te0[(temp      ) & 0xff] & 0x0000ff00) ^
-                (Te1[(temp >> 24)       ] & 0x000000ff) ^
-                rcon[i];
-            out[ 9] = out[ 1] ^ out[ 8];
-            out[10] = out[ 2] ^ out[ 9];
-            out[11] = out[ 3] ^ out[10];
-            if (++i == 7) { return 0; }
-            temp = out[11];
-            out[12] = out[ 4] ^
-                (Te2[(temp >> 24)       ] & 0xff000000) ^
-                (Te3[(temp >> 16) & 0xff] & 0x00ff0000) ^
-                (Te0[(temp >>  8) & 0xff] & 0x0000ff00) ^
-                (Te1[(temp      ) & 0xff] & 0x000000ff);
-            out[13] = out[ 5] ^ out[12];
-            out[14] = out[ 6] ^ out[13];
-            out[15] = out[ 7] ^ out[14];
-            out += 8;
-        }  // while
-    } // if
+    for (i = 0; i < st->key_len / 4; i++) {
+        out[i] = GETU32(in + (i * 4));
+    }
+
+    n = st->key_len / 4;
+    for (i = n; i < ((n + 6) + 1) * 4; i++) {
+        temp = out[i - 1];
+        if (i % n == 0) {
+            temp = sub_word(rotate_word(temp)) ^ rcon[i / n - 1];
+        } else if ((n > 6) && (i % n == 4)) {
+            temp = sub_word(temp);
+        }
+        out[i] = out[i - n] ^ temp;
+    }
+
+    for (i = 0; i < st->key_len; i++) {
+        printf("%08x:", out[i]);
+        if (i % 4 == 3) printf("\n");
+    }
 
     return -1;
 }

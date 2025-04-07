@@ -66,7 +66,8 @@ bool compare_TestData(const TestData* data1, const TestData* data2);
 
 void create_BlockCipher_AES_ReqFile(const char* filename_fax, const char* filename_req);
 void create_BlockCipher_AES_RspFile(const char* filename_req, const char* filename_rsp);
-void KAT_TEST_BLOCKCIPHER_AES(const char* filename, const BlockCipherApi* aes_api, TestData* data);
+// void KAT_TEST_BLOCKCIPHER_AES(const char* filename, const BlockCipherApi* aes_api, TestData* data);
+void KAT_TEST_BLOCKCIPHER_AES(void);
 
 #ifdef __cplusplus
 }

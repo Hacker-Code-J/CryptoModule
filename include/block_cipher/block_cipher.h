@@ -59,7 +59,7 @@ typedef struct BlockCipherApi {
 /* The context structure storing state. */
 struct BlockCipherContext {
     const BlockCipherApi *api;  
-    u8 internal_data[256]; /* Example placeholder for key schedule, etc. */
+    u8 internal_data[256]; /* space for internal state, e.g., round keys */
 };
 
 /* For usage:

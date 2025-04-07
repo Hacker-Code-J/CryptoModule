@@ -1,6 +1,7 @@
 /* File: src/main.c */
 #include "../include/api.h"
 #include "../include/utility.h"
+#include "../include/kat_verifier.h"
 
 int main(void) {
     // /* 1) Initialize entire cryptomodule. (optional) */
@@ -62,57 +63,70 @@ int main(void) {
     // /* 7) Cleanup cryptomodule. */
     // cryptomodule_cleanup();
 
-    cryptomodule_status_t rc = cryptomodule_init();
-    if (rc != CRYPTOMODULE_OK) {
-        printf("Failed to init cryptomodule\n");
-        return 1;
-    }
-    const BlockCipherApi *aes_api = get_aes_api();
-    if (!aes_api) {
-        printf("No AES API available.\n");
-        cryptomodule_cleanup();
-        return 1;
-    }
-    BlockCipherContext ctx;
-    clear_ctx(&ctx);
 
-    const char* inputString = "f34481ec3cc627bacd5dc3fb08f273e6";
-    u8 plaintext[16];
-    stringToByteArray(inputString, plaintext);
+    // AES_TEST
+    // cryptomodule_status_t rc = cryptomodule_init();
+    // if (rc != CRYPTOMODULE_OK) {
+    //     printf("Failed to init cryptomodule\n");
+    //     return 1;
+    // }
+    // const BlockCipherApi* aes_api = get_aes_api();
+    // if (!aes_api) {
+    //     printf("No AES API available.\n");
+    //     cryptomodule_cleanup();
+    //     return 1;
+    // }
+    // BlockCipherContext ctx;
+    // clear_ctx(&ctx);
 
-    const char* keyString = "00000000000000000000000000000000";
-    u8 key[16];
-    stringToByteArray(keyString, key);
+    // const char* inputString = "00000000000000000000000000000000";
+    // u8 plaintext[16];
+    // stringToByteArray(inputString, plaintext);
+    // // for (int i = 0; i < 16; i++) {
+    // //     printf("%02X ", plaintext[i]);
+    // // } puts("");
+
+    // const char* keyString = "ffffffffffffffffffffffffffffffff";
+    // u8 key[16];
+    // stringToByteArray(keyString, key);
+    // // for (int i = 0; i < 16; i++) {
+    // //     printf("%02X ", key[i]);
+    // // } puts("");
     
-    u8 ciphertext[16];
-    u8 decrypted[16];
+    // u8 ciphertext[16];
+    // u8 decrypted[16];
 
-    /* 4) Initialize AES. */
-    if (aes_api->init(&ctx, 16, key, 32) != 0) {
-        printf("AES init failed (maybe invalid block/key size)\n");
-        return 1;
-    }
+    // /* 4) Initialize AES. */
+    // if (aes_api->init(&ctx, 16, key, 16) != 0) {
+    //     printf("AES init failed (maybe invalid block/key size)\n");
+    //     return 1;
+    // }
 
-    aes_api->encrypt_block(&ctx, plaintext, ciphertext);
-    // aes_api->decrypt_block(&ctx, ciphertext, decrypted);
+    // /* 5) Encrypt/Decrypt a block. */
 
-    printf("Plaintext: ");
-    for (int i = 0; i < 16; i++) {
-        printf("%02X ", plaintext[i]);
-    } puts("");
+    // aes_api->encrypt_block(&ctx, plaintext, ciphertext);
+    // // aes_api->decrypt_block(&ctx, ciphertext, decrypted);
+
+    // printf("Plaintext: ");
+    // for (int i = 0; i < 16; i++) {
+    //     printf("%02X ", plaintext[i]);
+    // } puts("");
     
-    printf("Ciphertext: ");
-    for (int i = 0; i < 16; i++) {
-        printf("%02X ", ciphertext[i]);
-    }
-    printf("\n");
+    // printf("Ciphertext: ");
+    // for (int i = 0; i < 16; i++) {
+    //     printf("%02X ", ciphertext[i]);
+    // }
+    // printf("\n");
 
-    // printf("Decrypted : %s\n", decrypted);
+    // // printf("Decrypted : %s\n", decrypted);
 
-    /* 6) Dispose AES context. */
-    if (aes_api->dispose) aes_api->dispose(&ctx);
+    // /* 6) Dispose AES context. */
+    // if (aes_api->dispose) aes_api->dispose(&ctx);
 
-    cryptomodule_cleanup();
+    // cryptomodule_cleanup();
+
+
+    KAT_TEST_BLOCKCIPHER_AES();
 
     return 0;
 }
@@ -132,13 +146,13 @@ int main(void) {
 //         return 1;
 //     }
 
-//     // /* 2) Grab an AES block cipher API. */
-//     // const BlockCipherApi *aes_api = get_aes_api();
-//     // if (!aes_api) {
-//     //     printf("AES API not available.\n");
-//     //     cryptomodule_cleanup();
-//     //     return 1;
-//     // }
+    // /* 2) Grab an AES block cipher API. */
+    // const BlockCipherApi *aes_api = get_aes_api();
+    // if (!aes_api) {
+    //     printf("AES API not available.\n");
+    //     cryptomodule_cleanup();
+    //     return 1;
+    // }
 
 //     // /* 3) Prepare a context. */
 //     // BlockCipherContext ctx;

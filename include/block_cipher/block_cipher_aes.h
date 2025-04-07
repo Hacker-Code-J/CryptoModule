@@ -20,6 +20,7 @@ const BlockCipherApi* get_aes_api(void);
 
 #  define GETU32(pt) (((u32)(pt)[0] << 24) ^ ((u32)(pt)[1] << 16) ^ ((u32)(pt)[2] <<  8) ^ ((u32)(pt)[3]))
 #  define PUTU32(ct, st) { (ct)[0] = (u8)((st) >> 24); (ct)[1] = (u8)((st) >> 16); (ct)[2] = (u8)((st) >>  8); (ct)[3] = (u8)(st); }
+
 // static inline u32 GETU32(const u8* pt) {
 //     return ((u32)(pt)[0] << 0x18) ^
 //            ((u32)(pt)[1] << 0x10) ^
@@ -643,6 +644,31 @@ static const u8 Td4[256] = {
     0x17U, 0x2bU, 0x04U, 0x7eU, 0xbaU, 0x77U, 0xd6U, 0x26U,
     0xe1U, 0x69U, 0x14U, 0x63U, 0x55U, 0x21U, 0x0cU, 0x7dU,
 };
+
+static inline u32 rotate_word(u32 word) {
+    return ((word << 8) | (word >> 24));
+}
+
+static inline u32 sub_word(u32 word) {
+    return ((u32)Te4[(word >> 24) & 0xff] << 24) ^
+           ((u32)Te4[(word >> 16) & 0xff] << 16) ^
+           ((u32)Te4[(word >> 8) & 0xff] << 8) ^
+           ((u32)Te4[word & 0xff]);
+}
+
+static inline void byte2word(u8 b[16], u32 st[4]) {
+    st[0] = GETU32(b);
+    st[1] = GETU32(b + 0x04);
+    st[2] = GETU32(b + 0x08);
+    st[3] = GETU32(b + 0x0C);
+}
+
+static inline void word2byte(u32 st[4], u8 b[16]) {
+    PUTU32(b       , st[0]);
+    PUTU32(b + 0x04, st[1]);
+    PUTU32(b + 0x08, st[2]);
+    PUTU32(b + 0x0C, st[3]);
+}
 
 #ifdef __cplusplus
 }

@@ -64,7 +64,12 @@
     "*.tcc": "c",
     "unordered_map": "c",
     "numeric": "c",
-    "ostream": "c"
+    "ostream": "c",
+    "array": "c",
+    "string_view": "c",
+    "initializer_list": "c",
+    "utility": "c",
+    "kat_verifier.h": "c"
   },
   "files.exclude": {
     "**/*.vo": true,

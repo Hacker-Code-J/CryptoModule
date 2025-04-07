@@ -105,6 +105,7 @@
 %-------------------------
 % Listing Settings
 %-------------------------
+\usepackage{listings}
 \lstset{
 	basicstyle=\footnotesize\ttfamily,
 	breaklines=true,
@@ -113,18 +114,6 @@
 	captionpos=b,
 	numbers=left
 }
-
-%-------------------------
-% Header & Footer Settings
-%-------------------------
-\pagestyle{fancy}
-\fancyhf{}
-\fancyhead[L]{\leftmark}
-\fancyhead[R]{\thepage}
-\renewcommand{\headrulewidth}{0.4pt}
-
-\usepackage{listings}       % For code listings
-% Configure the listings environment for C code
 \lstdefinestyle{cstyle}{
 	language=C,
 	basicstyle=\small\ttfamily,
@@ -141,6 +130,17 @@
 	escapeinside={(*@}{@*)},
 	frame=single
 }
+\renewcommand{\lstlistingname}{Code}
+
+
+%-------------------------
+% Header & Footer Settings
+%-------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
 
 
 \usepackage{background}

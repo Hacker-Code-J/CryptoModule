@@ -135,22 +135,23 @@ void create_BlockCipher_AES_ReqFile(const char* filename_fax, const char* filena
     size_t bufsize = MAX_LINE_LENGTH;
     int is_first_key = 1;
 
+    printf("[REQ] Creating request file: %s\n", filename_req);
     fp_fax = fopen(filename_fax, "r");
     if (fp_fax == NULL) {
-        fprintf(stderr, "Error opening file: %s\n", filename_fax);
+        fprintf(stderr, "[REQ] Error opening file: %s\n", filename_fax);
         return;
     }
 
     fp_req = fopen(filename_req, "w");
     if (fp_req == NULL) {
-        fprintf(stderr, "Error opening file: %s\n", filename_req);
+        fprintf(stderr, "[REQ] Error opening file: %s\n", filename_req);
         fclose(fp_fax);
         return;
     }
 
-    line = (char*)malloc(bufsize * sizeof(char));
+    line = (char*)calloc(bufsize, sizeof(char));
     if (line == NULL) {
-        fprintf(stderr, "Memory allocation error\n");
+        fprintf(stderr, "[REQ] Memory allocation error\n");
         fclose(fp_fax);
         fclose(fp_req);
         return;
@@ -176,7 +177,7 @@ void create_BlockCipher_AES_ReqFile(const char* filename_fax, const char* filena
     printf("Created request file: %s\n", filename_req);
 }
 
-void create_BlockCipher_AES_RspFile(const char* filename_fax, const char* filename_rsp) {
+void create_BlockCipher_AES_RspFile(const char* filename_req, const char* filename_rsp) {
     FILE *fp_req, *fp_rsp;
     char* line;
     size_t bufsize = MAX_LINE_LENGTH;
@@ -185,20 +186,21 @@ void create_BlockCipher_AES_RspFile(const char* filename_fax, const char* filena
 
     TestData* data = (TestData*)malloc(sizeof(TestData));
     if (data == NULL) {
-        fprintf(stderr, "Memory allocation error\n");
+        fprintf(stderr, "[RSP] Memory allocation error\n");
         return;
     }
     memset(data, 0, sizeof(TestData));
 
-    fp_req = fopen(filename_fax, "r");
+    printf("[RSP] Creating response file: %s\n", filename_rsp);
+    fp_req = fopen(filename_req, "r");
     if (fp_req == NULL) {
-        fprintf(stderr, "Error opening file: %s\n", filename_fax);
+        fprintf(stderr, "[RSP] Error opening file: %s\n", filename_req);
         free(data);
         return;
     }
     fp_rsp = fopen(filename_rsp, "w");
     if (fp_rsp == NULL) {
-        fprintf(stderr, "Error opening file: %s\n", filename_rsp);
+        fprintf(stderr, "[RSP] Error opening file: %s\n", filename_rsp);
         fclose(fp_req);
         free(data);
         return;
@@ -253,28 +255,168 @@ void create_BlockCipher_AES_RspFile(const char* filename_fax, const char* filena
                 return;
             }
             fprintf(fp_rsp, "CT = ");
-            
+            cryptomodule_status_t rc = cryptomodule_init();
+            const BlockCipherApi* aes_api = get_aes_api();
+            BlockCipherContext ctx; clear_ctx(&ctx);
+            if (aes_api->init(&ctx, 16, data->key, 16) != 0) {
+                printf("AES init failed (maybe invalid block/key size)\n");
+                return 1;
+            }
+            aes_api->encrypt_block(&ctx, data->pt, data->ct);
+            write_TestData(fp_rsp, data->ct, data_len);
+            fprintf(fp_rsp, "\n");
+            if (aes_api->dispose) aes_api->dispose(&ctx);
+            cryptomodule_cleanup();
         }
     }
 }
 
-void KAT_TEST_BLOCKCIPHER_AES(const char* filename, const BlockCipherApi* aes_api, TestData* data) {
-    // const char* AES_KAT_FOLDER_PATH = "../testvectors/block_cipher_tv/aes/";
-    // char filename_fax[50];
-    // char filename_rsp[50];
-    // snprintf(filename_fax, sizeof(filename_fax), "%s", AES_KAT_FOLDER_PATH, "AES128(ECB)KAT.fax");
-    // snprintf(filename_rsp, sizeof(filename_rsp), "%s", AES_KAT_FOLDER_PATH, "AES128(ECB)KAT.rsp");
+void KAT_TEST_BLOCKCIPHER_AES(void) {
+    const char* KAT_TEST_BC_AES_PATH = "../testvectors/block_cipher_tv/aes/";
+    char filename_fax[100];
+    char filename_req[100];
+    char filename_rsp[100];
 
+    snprintf(filename_fax, sizeof(filename_fax), "%s%s", KAT_TEST_BC_AES_PATH, "AES128(ECB)KAT.fax");
+    snprintf(filename_req, sizeof(filename_req), "%s%s", KAT_TEST_BC_AES_PATH, "AES128(ECB)KAT.req");
+    snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", KAT_TEST_BC_AES_PATH, "AES128(ECB)KAT.rsp");
 
-    // create_BlockCipher_AES_TestData(filename, data);
-    // if (!data->key || !data->iv || !data->pt || !data->ct) {
-    //     fprintf(stderr, "Error: Test data is not properly initialized.\n");
-    //     return;
-    // }
-    // FILE* fp = fopen(filename, "r");
-    // if (!fp) {
-    //     fprintf(stderr, "Error opening file: %s\n", filename);
-    //     return;
-    // }
-    // TestData test_data;
+    create_BlockCipher_AES_ReqFile(filename_fax, filename_req);
+    create_BlockCipher_AES_RspFile(filename_req, filename_rsp);
+    
+    printf("\n START: KAT_TEST_BLOCKCIPHER_AES\n");
+    // printf("  AES API: %s\n", aes_api->name);
+    printf("  Request file: %s\n", filename_req);
+    printf("  Response file: %s\n", filename_rsp);
+    printf("  Test data file: %s\n", filename_fax);
+    
+    
+    FILE* fp_fax = fopen(filename_fax, "r");
+    if (fp_fax == NULL) {
+        fprintf(stderr, "[VERIFY] Error opening file: %s\n", filename_req);
+        return;
+    }
+    FILE* fp_rsp = fopen(filename_rsp, "r");
+    if (fp_rsp == NULL) {
+        fprintf(stderr, "[VERIFY] Error opening file: %s\n", filename_rsp);
+        fclose(fp_fax);
+        return;
+    }
+
+    TestData* data_fax = (TestData*)malloc(sizeof(TestData));
+    if (data_fax == NULL) {
+        fprintf(stderr, "Memory allocation error\n");
+        fclose(fp_fax);
+        fclose(fp_rsp);
+        return;
+    }
+    memset(data_fax, 0, sizeof(TestData));
+    TestData* data_rsp = (TestData*)malloc(sizeof(TestData));
+    if (data_rsp == NULL) {
+        fprintf(stderr, "Memory allocation error\n");
+        fclose(fp_fax);
+        fclose(fp_rsp);
+        free(data_fax);
+        return;
+    }
+    memset(data_rsp, 0, sizeof(TestData));
+    
+    
+    int result = 1;
+    int i = 1;
+    int total_tests = 284;
+    int passed_tests = 0;
+
+    while (i < total_tests) {
+        memset(data_fax, 0, sizeof(TestData));
+        if (!read_TestData(fp_fax, data_fax)) {
+            fprintf(stderr, "Error reading test data from file: %s\n", filename_fax);
+            break;
+        }
+        memset(data_rsp, 0, sizeof(TestData));
+        if (!read_TestData(fp_rsp, data_rsp)) {
+            fprintf(stderr, "Error reading test data from file: %s\n", filename_rsp);
+            break;
+        }
+        if (data_fax->key_len != data_rsp->key_len || 
+            data_fax->iv_len != data_rsp->iv_len || 
+            data_fax->pt_len != data_rsp->pt_len || 
+            data_fax->ct_len != data_rsp->ct_len) {
+            fprintf(stderr, "Test data length mismatch\n");
+            break;
+        }
+        if (data_fax->key_len != data_rsp->key_len || 
+            data_fax->iv_len != data_rsp->iv_len || 
+            data_fax->pt_len != data_rsp->pt_len || 
+            data_fax->ct_len != data_rsp->ct_len) {
+            fprintf(stderr, "Test data length mismatch\n");
+            break;
+        }
+        if (data_fax->key_len != data_rsp->key_len || 
+            data_fax->iv_len != data_rsp->iv_len || 
+            data_fax->pt_len != data_rsp->pt_len || 
+            data_fax->ct_len != data_rsp->ct_len) {
+            fprintf(stderr, "Test data length mismatch\n");
+            break;
+        }
+        if (data_fax->key_len != data_rsp->key_len || 
+            data_fax->iv_len != data_rsp->iv_len || 
+            data_fax->pt_len != data_rsp->pt_len || 
+            data_fax->ct_len != data_rsp->ct_len) {
+            fprintf(stderr, "Test data length mismatch\n");
+            break;
+        }
+        if (data_fax->key_len != data_rsp->key_len || 
+            data_fax->iv_len != data_rsp->iv_len || 
+            data_fax->pt_len != data_rsp->pt_len || 
+            data_fax->ct_len != data_rsp->ct_len) {
+            fprintf(stderr, "Test data length mismatch\n");
+            break;
+        }
+        if (data_fax->key_len != data_rsp->key_len || 
+            data_fax->iv_len != data_rsp->iv_len || 
+            data_fax->pt_len != data_rsp->pt_len || 
+            data_fax->ct_len != data_rsp->ct_len) {
+            fprintf(stderr, "Test data length mismatch\n");
+            break;
+        }
+        if (data_fax->key_len != data_rsp->key_len || 
+            data_fax->iv_len != data_rsp->iv_len || 
+            data_fax->pt_len != data_rsp->pt_len || 
+            data_fax->ct_len != data_rsp->ct_len) {
+            fprintf(stderr, "Test data length mismatch\n");
+            break;
+        }
+        if (data_fax->key_len != data_rsp->key_len || 
+            data_fax->iv_len != data_rsp->iv_len || 
+            data_fax->pt_len != data_rsp->pt_len || 
+            data_fax->ct_len != data_rsp->ct_len) {
+            fprintf(stderr, "Test data length mismatch\n");
+            break;
+        }
+
+        passed_tests++;
+        progress_bar(i, total_tests);
+        i++;
+    }
+
+    if (result) {
+        printf("\nAll tests passed!\n");
+    } else {
+        printf("\nSome tests failed.\n");
+    }
+    fclose(fp_fax);
+    fclose(fp_rsp);
+    free(data_fax->key);
+    free(data_fax->iv);
+    free(data_fax->pt);
+    free(data_fax->ct);
+    free(data_fax);
+    free(data_rsp->key);
+    free(data_rsp->iv);
+    free(data_rsp->pt);
+    free(data_rsp->ct);
+    free(data_rsp);
+    printf(" END: KAT_TEST_BLOCKCIPHER_AES\n");
+    printf("Passed tests: %d/%d\n", passed_tests, total_tests);
 }

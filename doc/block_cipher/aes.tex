@@ -13,116 +13,169 @@
 		\bottomrule[1.2pt]
 	\end{tabular*}
 \end{table}
-\begin{lstlisting}
-/* 
-* AES Round Transformation (Highly Optimized)
-* 
-* I utilized loop unrolling, pointer arithmetic, and 
-* specific compiler extensions to ensure minimal overhead.
-* This is a simplified excerpt focusing on 128-bit keys.
-*/
+\newpage
+\begin{lstlisting}[style=cstyle, caption={include/block\_cipher/block\_cipher.h}, captionpos=t]
+/* Forward declaration for the context. */
+typedef struct BlockCipherContext BlockCipherContext;
 
-#include <stdint.h>
-#include <stddef.h>
+/* The vtable or function pointer set describing any block cipher. */
+typedef struct BlockCipherApi {
+	const char *name; /* e.g. "AES" or "MyCipher" */
+	
+	/* Initialize the cipher with the chosen block size and key. */
+	int (*init)(
+		BlockCipherContext* ctx,
+		size_t block_size,
+		const u8* key,
+		size_t key_len
+	);
+	/* Encrypt exactly one block. */
+	void (*encrypt_block)(
+		BlockCipherContext* ctx,
+		const u8* plaintext,
+		u8* ciphertext
+	);
+	/* Decrypt exactly one block. */
+		void (*decrypt_block)(
+		BlockCipherContext* ctx,
+		const u8* ciphertext,
+		u8* plaintext
+	);
+	/* Clean up resources, if needed. */
+	void (*dispose)(
+		BlockCipherContext* ctx
+	);
+	
+} BlockCipherApi;
 
-/* Example S-box for AES; typically a static const table. */
-static const uint8_t sbox[256] = {
-	/* 256 values omitted for brevity ... */
+/* The context structure storing state. */
+struct BlockCipherContext {
+	const BlockCipherApi *api;  
+	u8 internal_data[256]; /* Example placeholder for key schedule, etc. */
 };
-
-/* 
-* Inline function for SubBytes step using the S-box 
-* Leveraging GCC's __restrict to hint pointer usage.
-*/
-static inline void sub_bytes(uint8_t *__restrict block) {
-	for (int i = 0; i < 16; ++i) {
-		block[i] = sbox[block[i]];
-	}
-}
-
-/*
-* Inlined function for ShiftRows step.
-* Shifts the rows of the 4x4 byte matrix left by
-* varying offsets (0,1,2,3).
-*/
-static inline void shift_rows(uint8_t *__restrict block) {
-	/* Row 1 shift: 4 bytes are rearranged as needed */
-	uint8_t temp = block[1];
-	block[1]     = block[5];
-	block[5]     = block[9];
-	block[9]     = block[13];
-	block[13]    = temp;
-	
-	/* Row 2 shift: 4 bytes swap in pairs */
-	uint8_t temp1 = block[2];
-	uint8_t temp2 = block[6];
-	block[2]      = block[10];
-	block[6]      = block[14];
-	block[10]     = temp1;
-	block[14]     = temp2;
-	
-	/* Row 3 shift: 4 bytes are rearranged again */
-	temp          = block[3];
-	block[3]      = block[15];
-	block[15]     = block[11];
-	block[11]     = block[7];
-	block[7]      = temp;
-}
-
-/* 
-* Multiply operation in GF(2^8) for MixColumns 
-* using a small lookup to accelerate. 
-*/
-static inline uint8_t gm_mul(uint8_t a, uint8_t b) {
-	uint8_t r = 0;
-	for (int i = 0; i < 8; i++) {
-		if (b & 1) r ^= a;
-		uint8_t hi = (uint8_t)(a & 0x80);
-		a <<= 1;
-		if (hi) a ^= 0x1b; 
-		b >>= 1;
-	}
-	return r;
-}
-
-/*
-* MixColumns uses the gf_mul helper for each column in the block.
-* Four 4-byte columns are processed. This routine is unrolled 
-* for maximum performance with minimal overhead.
-*/
-static inline void mix_columns(uint8_t *__restrict block) {
-	for (int col = 0; col < 4; col++) {
-		uint8_t *c = block + (col << 2);
-		uint8_t a0 = c[0], a1 = c[1], a2 = c[2], a3 = c[3];
-		uint8_t r0 = gm_mul(a0, 2) ^ gm_mul(a1, 3) ^ a2 ^ a3;
-		uint8_t r1 = a0 ^ gm_mul(a1, 2) ^ gm_mul(a2, 3) ^ a3;
-		uint8_t r2 = a0 ^ a1 ^ gm_mul(a2, 2) ^ gm_mul(a3, 3);
-		uint8_t r3 = gm_mul(a0, 3) ^ a1 ^ a2 ^ gm_mul(a3, 2);
-		c[0] = r0; c[1] = r1; c[2] = r2; c[3] = r3;
-	}
-}
-
-/*
-* add_round_key merges the round subkey using XOR 
-* for the final step of each round.
-*/
-static inline void add_round_key(uint8_t *block, const uint8_t *round_key) {
-	for (int i = 0; i < 16; ++i) {
-		block[i] ^= round_key[i];
-	}
-}
-
-/*
-* This function performs one AES round:
-* SubBytes -> ShiftRows -> MixColumns -> AddRoundKey
-*/
-void aes_round_optimized(uint8_t *block, const uint8_t *round_key) {
-	sub_bytes(block);
-	shift_rows(block);
-	mix_columns(block);
-	add_round_key(block, round_key);
-}
 \end{lstlisting}
+\begin{lstlisting}[style=cstyle, caption={include/block\_cipher/block\_cipher\_aes.h}, captionpos=t]
+const BlockCipherApi* get_aes_api(void);
+\end{lstlisting}
+\begin{lstlisting}[style=cstyle, caption={src/block\_cipher/block\_cipher\_aes.c}, captionpos=t]
+typedef struct AesInternal {
+	size_t block_size;  /* Typically must be 16 for AES */
+	size_t key_len;     /* 16, 24, or 32 for AES-128/192/256 */
+	u32 round_keys[60]; 
+	int nr;             /* e.g., 10 for AES-128, 12, or 14... */
+} AesInternal;
+\end{lstlisting}
+
+%\begin{lstlisting}
+%/* 
+%* AES Round Transformation (Highly Optimized)
+%* 
+%* I utilized loop unrolling, pointer arithmetic, and 
+%* specific compiler extensions to ensure minimal overhead.
+%* This is a simplified excerpt focusing on 128-bit keys.
+%*/
+%
+%#include <stdint.h>
+%#include <stddef.h>
+%
+%/* Example S-box for AES; typically a static const table. */
+%static const uint8_t sbox[256] = {
+%	/* 256 values omitted for brevity ... */
+%};
+%
+%/* 
+%* Inline function for SubBytes step using the S-box 
+%* Leveraging GCC's __restrict to hint pointer usage.
+%*/
+%static inline void sub_bytes(uint8_t *__restrict block) {
+%	for (int i = 0; i < 16; ++i) {
+%		block[i] = sbox[block[i]];
+%	}
+%}
+%
+%/*
+%* Inlined function for ShiftRows step.
+%* Shifts the rows of the 4x4 byte matrix left by
+%* varying offsets (0,1,2,3).
+%*/
+%static inline void shift_rows(uint8_t *__restrict block) {
+%	/* Row 1 shift: 4 bytes are rearranged as needed */
+%	uint8_t temp = block[1];
+%	block[1]     = block[5];
+%	block[5]     = block[9];
+%	block[9]     = block[13];
+%	block[13]    = temp;
+%	
+%	/* Row 2 shift: 4 bytes swap in pairs */
+%	uint8_t temp1 = block[2];
+%	uint8_t temp2 = block[6];
+%	block[2]      = block[10];
+%	block[6]      = block[14];
+%	block[10]     = temp1;
+%	block[14]     = temp2;
+%	
+%	/* Row 3 shift: 4 bytes are rearranged again */
+%	temp          = block[3];
+%	block[3]      = block[15];
+%	block[15]     = block[11];
+%	block[11]     = block[7];
+%	block[7]      = temp;
+%}
+%
+%/* 
+%* Multiply operation in GF(2^8) for MixColumns 
+%* using a small lookup to accelerate. 
+%*/
+%static inline uint8_t gm_mul(uint8_t a, uint8_t b) {
+%	uint8_t r = 0;
+%	for (int i = 0; i < 8; i++) {
+%		if (b & 1) r ^= a;
+%		uint8_t hi = (uint8_t)(a & 0x80);
+%		a <<= 1;
+%		if (hi) a ^= 0x1b; 
+%		b >>= 1;
+%	}
+%	return r;
+%}
+%
+%/*
+%* MixColumns uses the gf_mul helper for each column in the block.
+%* Four 4-byte columns are processed. This routine is unrolled 
+%* for maximum performance with minimal overhead.
+%*/
+%static inline void mix_columns(uint8_t *__restrict block) {
+%	for (int col = 0; col < 4; col++) {
+%		uint8_t *c = block + (col << 2);
+%		uint8_t a0 = c[0], a1 = c[1], a2 = c[2], a3 = c[3];
+%		uint8_t r0 = gm_mul(a0, 2) ^ gm_mul(a1, 3) ^ a2 ^ a3;
+%		uint8_t r1 = a0 ^ gm_mul(a1, 2) ^ gm_mul(a2, 3) ^ a3;
+%		uint8_t r2 = a0 ^ a1 ^ gm_mul(a2, 2) ^ gm_mul(a3, 3);
+%		uint8_t r3 = gm_mul(a0, 3) ^ a1 ^ a2 ^ gm_mul(a3, 2);
+%		c[0] = r0; c[1] = r1; c[2] = r2; c[3] = r3;
+%	}
+%}
+%
+%/*
+%* add_round_key merges the round subkey using XOR 
+%* for the final step of each round.
+%*/
+%static inline void add_round_key(uint8_t *block, const uint8_t *round_key) {
+%	for (int i = 0; i < 16; ++i) {
+%		block[i] ^= round_key[i];
+%	}
+%}
+%
+%/*
+%* This function performs one AES round:
+%* SubBytes -> ShiftRows -> MixColumns -> AddRoundKey
+%*/
+%void aes_round_optimized(uint8_t *block, const uint8_t *round_key) {
+%	sub_bytes(block);
+%	shift_rows(block);
+%	mix_columns(block);
+%	add_round_key(block, round_key);
+%}
+%\end{lstlisting}
 
 \paragraph{Discussion of Optimization Techniques}
 
