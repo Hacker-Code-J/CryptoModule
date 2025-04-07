@@ -18,19 +18,20 @@ static const u32 rcon[] = {
 /* Get the AES block cipher vtable. */
 const BlockCipherApi* get_aes_api(void);
 
-static inline u32 GETU32(const u8* pt) {
-    return ((u32)(pt)[0] << 0x18) ^
-           ((u32)(pt)[1] << 0x10) ^
-           ((u32)(pt)[2] << 0x08) ^
-           ((u32)(pt)[3]);
-}
-
-static inline u32 PUT32(u8* pt) {
-    return ((u32)(pt)[0] << 0x18) ^
-           ((u32)(pt)[1] << 0x10) ^
-           ((u32)(pt)[2] << 0x08) ^
-           ((u32)(pt)[3]);
-}
+#  define GETU32(pt) (((u32)(pt)[0] << 24) ^ ((u32)(pt)[1] << 16) ^ ((u32)(pt)[2] <<  8) ^ ((u32)(pt)[3]))
+#  define PUTU32(ct, st) { (ct)[0] = (u8)((st) >> 24); (ct)[1] = (u8)((st) >> 16); (ct)[2] = (u8)((st) >>  8); (ct)[3] = (u8)(st); }
+// static inline u32 GETU32(const u8* pt) {
+//     return ((u32)(pt)[0] << 0x18) ^
+//            ((u32)(pt)[1] << 0x10) ^
+//            ((u32)(pt)[2] << 0x08) ^
+//            ((u32)(pt)[3]);
+// }
+// static inline u32 PUTU32(const u8* pt) {
+//     return ((u32)(pt)[0] << 0x18) ^
+//            ((u32)(pt)[1] << 0x10) ^
+//            ((u32)(pt)[2] << 0x08) ^
+//            ((u32)(pt)[3]);
+// }
 
 /*
  * Te0[x] = S [x].[02, 01, 01, 03];

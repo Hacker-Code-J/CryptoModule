@@ -2,36 +2,90 @@
 #include "../include/api.h"
 #include "../include/utility.h"
 
-int main(void)
-{
-    /* 1) Initialize entire cryptomodule. (optional) */
+int main(void) {
+    // /* 1) Initialize entire cryptomodule. (optional) */
+    // cryptomodule_status_t rc = cryptomodule_init();
+    // if (rc != CRYPTOMODULE_OK) {
+    //     printf("Failed to init cryptomodule\n");
+    //     return 1;
+    // }
+
+    // /* 2) Acquire AES vtable. */
+    // const BlockCipherApi *aes_api = get_aes_api();
+    // if (!aes_api) {
+    //     printf("No AES API available.\n");
+    //     cryptomodule_cleanup();
+    //     return 1;
+    // }
+
+    // /* 3) Prepare a cipher context. */
+    // BlockCipherContext ctx;
+    // // memset(&ctx, 0, sizeof(ctx));
+    // clear_ctx(&ctx);
+
+    // /* 16-byte key for AES-128 example. */
+    // // 32-byte key for AES-256
+    // uint8_t key[32] = {
+    //     0x00,0x01,0x02,0x03, 0x04,0x05,0x06,0x07,
+    //     0x08,0x09,0x0A,0x0B, 0x0C,0x0D,0x0E,0x0F,
+    //     0x10,0x11,0x12,0x13, 0x14,0x15,0x16,0x17,
+    //     0x18,0x19,0x1A,0x1B, 0x1C,0x1D,0x1E,0x1F
+    //  };
+
+    // /* 4) Initialize AES. */
+    // if (aes_api->init(&ctx, 16, key, 32) != 0) {
+    //     printf("AES init failed (maybe invalid block/key size)\n");
+    //     return 1;
+    // }
+
+    // /* 5) Encrypt/Decrypt a block. */
+    // uint8_t plaintext[16]  = "HelloAES_Example"; 
+    // uint8_t ciphertext[16] = {0};
+    // uint8_t decrypted[16]  = {0};
+
+    // aes_api->encrypt_block(&ctx, plaintext, ciphertext);
+    // aes_api->decrypt_block(&ctx, ciphertext, decrypted);
+
+    // printf("Plaintext : %s\n", plaintext);
+
+    // printf("Ciphertext: ");
+    // for (int i = 0; i < 16; i++) {
+    //     printf("%02X ", ciphertext[i]);
+    // }
+    // printf("\n");
+
+    // printf("Decrypted : %s\n", decrypted);
+
+    // /* 6) Dispose AES context. */
+    // if (aes_api->dispose) aes_api->dispose(&ctx);
+
+    // /* 7) Cleanup cryptomodule. */
+    // cryptomodule_cleanup();
+
     cryptomodule_status_t rc = cryptomodule_init();
     if (rc != CRYPTOMODULE_OK) {
         printf("Failed to init cryptomodule\n");
         return 1;
     }
-
-    /* 2) Acquire AES vtable. */
     const BlockCipherApi *aes_api = get_aes_api();
     if (!aes_api) {
         printf("No AES API available.\n");
         cryptomodule_cleanup();
         return 1;
     }
-
-    /* 3) Prepare a cipher context. */
     BlockCipherContext ctx;
-    // memset(&ctx, 0, sizeof(ctx));
     clear_ctx(&ctx);
 
-    /* 16-byte key for AES-128 example. */
-    // 32-byte key for AES-256
-    uint8_t key[32] = {
-        0x00,0x01,0x02,0x03, 0x04,0x05,0x06,0x07,
-        0x08,0x09,0x0A,0x0B, 0x0C,0x0D,0x0E,0x0F,
-        0x10,0x11,0x12,0x13, 0x14,0x15,0x16,0x17,
-        0x18,0x19,0x1A,0x1B, 0x1C,0x1D,0x1E,0x1F
-     };
+    const char* inputString = "f34481ec3cc627bacd5dc3fb08f273e6";
+    u8 plaintext[16];
+    stringToByteArray(inputString, plaintext);
+
+    const char* keyString = "00000000000000000000000000000000";
+    u8 key[16];
+    stringToByteArray(keyString, key);
+    
+    u8 ciphertext[16];
+    u8 decrypted[16];
 
     /* 4) Initialize AES. */
     if (aes_api->init(&ctx, 16, key, 32) != 0) {
@@ -39,28 +93,25 @@ int main(void)
         return 1;
     }
 
-    /* 5) Encrypt/Decrypt a block. */
-    uint8_t plaintext[16]  = "HelloAES_Example"; 
-    uint8_t ciphertext[16] = {0};
-    uint8_t decrypted[16]  = {0};
-
     aes_api->encrypt_block(&ctx, plaintext, ciphertext);
-    aes_api->decrypt_block(&ctx, ciphertext, decrypted);
+    // aes_api->decrypt_block(&ctx, ciphertext, decrypted);
 
-    printf("Plaintext : %s\n", plaintext);
-
+    printf("Plaintext: ");
+    for (int i = 0; i < 16; i++) {
+        printf("%02X ", plaintext[i]);
+    } puts("");
+    
     printf("Ciphertext: ");
     for (int i = 0; i < 16; i++) {
         printf("%02X ", ciphertext[i]);
     }
     printf("\n");
 
-    printf("Decrypted : %s\n", decrypted);
+    // printf("Decrypted : %s\n", decrypted);
 
     /* 6) Dispose AES context. */
     if (aes_api->dispose) aes_api->dispose(&ctx);
 
-    /* 7) Cleanup cryptomodule. */
     cryptomodule_cleanup();
 
     return 0;

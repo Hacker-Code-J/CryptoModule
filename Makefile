@@ -24,7 +24,9 @@ SRCS := \
   src/main.c \
   src/block_cipher/block_cipher_aes.c \
   src/block_cipher/block_cipher_factory.c \
-  src/cryptomodule_core.c
+  src/cryptomodule_core.c \
+  src/cryptomodule_utils.c \
+  src/cryptomodule_test.c \
 
 # Generate a list of object files by mapping .c -> .o in the OBJ_DIR
 OBJS := $(SRCS:%.c=$(OBJ_DIR)/%.o)

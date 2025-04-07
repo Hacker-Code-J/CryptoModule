@@ -45,6 +45,10 @@
 \usepackage{newpxtext,newpxmath}
 \usepackage{sectsty}
 
+% Table
+\usepackage{booktabs}
+\usepackage{multirow}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Theorem, Definition, and Remark Environments
 \newtheorem{theorem}{Theorem}[chapter]
@@ -119,6 +123,25 @@
 \fancyhead[R]{\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 
+\usepackage{listings}       % For code listings
+% Configure the listings environment for C code
+\lstdefinestyle{cstyle}{
+	language=C,
+	basicstyle=\small\ttfamily,
+	keywordstyle=\bfseries\color{blue},
+	commentstyle=\itshape\color{teal!70!black},
+	stringstyle=\color{orange!90!black},
+	numbers=left,
+	numbersep=5pt,
+	numberstyle=\tiny\color{gray},
+	columns=fullflexible,
+	showstringspaces=false,
+	breaklines=true,
+	breakatwhitespace=true,
+	escapeinside={(*@}{@*)},
+	frame=single
+}
+
 
 \usepackage{background}
 \backgroundsetup{
@@ -144,28 +167,28 @@
 %-------------------------
 \begin{document}
 \begin{titlepage}
-	\setPageBackground
-	\centering
-	\vspace*{1cm}
-	
-	% Company logo (optional)
+\setPageBackground
+\centering
+\vspace*{1cm}
+
+% Company logo (optional)
 %		\includegraphics[width=0.3\textwidth]{logo.png}\par\vspace{1cm}
-	
-	\HRule \\[0.4cm]
-	{\Huge \sffamily \bfseries Cryptographic S/W Modules with C}\\[0.4cm]
-	\HRule \\[1.5cm]
-	
-	{\Large Design, Implementation, and Integration of Core Crypto Modules}\\[0.5cm]
-	{\normalsize Secure, Efficient, High-Performance Cryptographic Software Modules}\\[2cm]
-	
-	\begin{flushright}
-		\LARGE {\bfseries Ji, Yong-hyeon} \\ 
-		{\Large\texttt{hacker3740@kookmin.ac.kr}} \\[1.5cm]
-		\large Department of Cyber Security \\
-		Kookmin University \\ [1cm]
-		\today
-	\end{flushright}
-	\vfill
+
+\HRule \\[0.4cm]
+{\Huge \sffamily \bfseries Cryptographic S/W Modules with C}\\[0.4cm]
+\HRule \\[1.5cm]
+
+{\Large Design, Implementation, and Integration of Core Crypto Modules}\\[0.5cm]
+{\normalsize Secure, Efficient, High-Performance Cryptographic Software Modules}\\[2cm]
+
+\begin{flushright}
+	\LARGE {\bfseries Ji, Yong-hyeon} \\ 
+	{\Large\texttt{hacker3740@kookmin.ac.kr}} \\[1.5cm]
+	\large Department of Cyber Security \\
+	Kookmin University \\ [1cm]
+	\today
+\end{flushright}
+\vfill
 \end{titlepage}
 
 %-------------------------
@@ -180,7 +203,7 @@
 \chapter{Project Overview}
 %\section{Purpose and Scope}
 
-This document provides a comprehensive guide to the design, implementation, and integration of cryptographic modules written in C (sometimes assembly). 
+I have developed a cryptographic software module in the C language, with an emphasis on high performance and efficiency. This document provides a comprehensive guide to the design, implementation, and integration of cryptographic modules written in C (sometimes assembly). 
 %It is intended for developers, security engineers, and maintainers who need to understand the internal structure, coding guidelines, and best practices for working with these modules. By referencing both the C and ASM sources, readers will learn how to optimize cryptographic routines, ensure consistent interfaces, and maintain robust security properties throughout the system.
 \ \\
 \ \\ \noindent
@@ -354,12 +377,55 @@ Because cryptographic libraries are critical to overall system security, the pro
 	\item \textbf{Versioning and backward compatibility}: Each stable release is tagged in version control, with major version increments for breaking changes.
 \end{itemize}
 
-\chapter{Cryptographic Module}
+
+\section{Overview of the Module}
+
+I chose to develop a module that provides:
+\begin{itemize}
+	\item An extremely optimized AES-based symmetric cipher routine.
+	\item A key schedule algorithm that operates quickly while preserving security.
+	\item A helper function to securely clear sensitive material from memory.
+\end{itemize}
+
+\section{My Development Environment}
+To ensure transparency, let me highlight the specific environment in which I developed and tested this module:
+
+\begin{itemize}
+	\item \textbf{Operating System:} I worked primarily on a Linux environment (Ubuntu 22.04 LTS) with a modern kernel (5.x series).
+	\item \textbf{Compiler:} I used \texttt{gcc} (GNU Compiler Collection) version 9.3+ and occasionally tested with \texttt{clang} to verify portability. 
+	\item \textbf{Build System:} The \texttt{make} utility (GNU Make) for building source files and orchestrating tests.
+	\item \textbf{Hardware:} An x86-64 CPU with SSE4/AES-NI instructions available (though the code also tested fine on other hardware without AES-NI).
+	\item \textbf{Additional Tools:} \texttt{valgrind} for memory checks, \texttt{gdb} for debugging, and \texttt{perf} for performance profiling.
+\end{itemize}
+
+All of these components helped me detect issues early, confirm performance gains, and ensure that my cryptographic code was stable under various conditions.
+
+\section{System Requirements and Build Instructions}
+
+\subsection{System Requirements}
+\begin{itemize}
+	\item \textbf{C Compiler:} The module is known to build under \texttt{gcc} (9.0 or later) and \texttt{clang}.
+	\item \textbf{Make Tool:} A typical \texttt{make} environment suffices.
+	\item \textbf{Operating System:} Although I used Ubuntu Linux, any POSIX-compliant system should handle it with minimal adjustments.
+\end{itemize}
+
+\subsection{Build Instructions}
+
+\begin{enumerate}
+	\item Clone or download the module sources into a directory, say \texttt{crypto\_module/}.
+	\item Inside \texttt{crypto\_module/}, run \texttt{make} to compile everything.
+	\item The build process will generate an object file or static library (e.g., \texttt{libcrypto\_module.a}).
+	\item Link this library with your application by adding \texttt{-lcrypto\_module} (adjust name as needed) and ensure the include path is set to the module's header directory.
+\end{enumerate}
+
+\newpage
+\chapter{Cryptographic Software Module}
 
 %-----------------------------------------------------------------------
-%  CHAPTER 2: BLOCK CIPHER MODULES (Placeholder)
+%  SECTION 1: BLOCK CIPHER
 %-----------------------------------------------------------------------
-\section{Block Cipher Modules}
+\section{Block Cipher}
+\input{block_cipher/aes}
 % Detailed content about supported block ciphers, usage examples, ASM optimizations
 
 %-----------------------------------------------------------------------
