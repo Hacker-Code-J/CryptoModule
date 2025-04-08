@@ -42,7 +42,7 @@ extern "C" {
  *          This structure is essential for performing KAT verification in a consistent and efficient manner.
  *          It provides a clear and organized way to manage the test data needed for cryptographic algorithm validation.
  */
-typedef struct {
+typedef struct __TestData__ {
     u32* key;   // Pointer for arbitrary length key
     u32* iv;    // Pointer for arbitrary length IV
     u32* pt;    // Pointer for arbitrary length plaintext
@@ -57,7 +57,7 @@ typedef struct {
  * @brief Prints the contents of a TestData structure.
  * @param data Pointer to the TestData structure to print.
  */
-void print_TestData(const TestData* data);
+void print_TestData(const TestData *data);
 
 /**
  * @brief Prints a progress bar to the console.
@@ -70,7 +70,7 @@ void progress_bar(int current, int total);
  * @brief Frees the memory allocated for a TestData structure.
  * @param data Pointer to the TestData structure to free.
  */
-void free_TestData(TestData* data);
+void free_TestData(TestData *data);
 
 /**
  * @brief Parses a hexadecimal string into an array of u32 values.
@@ -78,14 +78,14 @@ void free_TestData(TestData* data);
  * @param src Pointer to the source hexadecimal string.
  * @param length Length of the destination array.
  */
-void parse_hexline(u32* dst, const char* src, size_t length);
+void parse_hexline(u32 *dst, const char* src, size_t length);
 
 /**
  * @brief Calculates the length of a word in a string.
  * @param string Pointer to the string.
  * @return Length of the word in the string.
  */
-size_t word_length(const char* string);
+size_t word_length(const char *string);
 
 /**
  * @brief Converts a hexadecimal string to a byte array.
@@ -93,7 +93,7 @@ size_t word_length(const char* string);
  * @param byte_array Pointer to the destination byte array.
  * @return Length of the byte array.
  */
-size_t byte_length(const char* string);
+size_t byte_length(const char *string);
 
 /**
  * @brief Reads test data from a file.
@@ -107,7 +107,7 @@ size_t byte_length(const char* string);
  *          such as hexadecimal or binary, and the function ensures that the data is read correctly into the structure.
  *          The function returns true if the read operation is successful, and false otherwise. 
  */
-bool read_TestData(FILE* fp, TestData* data);
+bool read_TestData(FILE *fp, TestData *data);
 
 /**
  * @brief Writes test data to a file.
@@ -124,7 +124,7 @@ bool read_TestData(FILE* fp, TestData* data);
  *          The data is typically written in a specific format, such as hexadecimal or binary,
  *          and the function ensures that the data is written correctly to the file.
  */
-void write_TestData(FILE* fp, const u32* data, size_t length);
+void write_TestData(FILE *fp, const u32 *data, size_t length);
 
 /**
  * @brief Compares two TestData structures for equality.
@@ -143,7 +143,7 @@ void write_TestData(FILE* fp, const u32* data, size_t length);
  *          of cryptographic algorithms. It provides a clear and organized way to compare the test data
  *          and determine if the KAT verification is successful.
  */
-bool compare_TestData(const TestData* data1, const TestData* data2);
+bool compare_TestData(const TestData *data1, const TestData* data2);
 
 /**
  * @brief Creates a request file for KAT verification.
@@ -154,6 +154,7 @@ bool compare_TestData(const TestData* data1, const TestData* data2);
  *          and file operations as needed.
  */
 void create_BlockCipher_KAT_ReqFile(const char* filename_fax, const char* filename_req);
+
 /**
  * @brief Creates a response file for KAT verification.
  * @param filename_req Pointer to the input request file name.
@@ -163,6 +164,7 @@ void create_BlockCipher_KAT_ReqFile(const char* filename_fax, const char* filena
  *          and file operations as needed.
  */
 void create_BlockCipher_KAT_RspFile(const char* filename_req, const char* filename_rsp);
+
 /**
  * @brief Performs KAT verification for AES block cipher.
  * @param filename_fax Pointer to the input file name.

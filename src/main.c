@@ -7,6 +7,49 @@ int main(void) {
 
     KAT_TEST_BLOCKCIPHER_AES();
 
+    // /* 1) Get the AES vtable. */
+    // const BlockCipherApi *aes_api = get_aes_api();
+
+    // /* 2) Create a context and call init. */
+    // BlockCipherContext ctx;
+    // memset(&ctx, 0, sizeof(ctx));
+
+    // /* For AES-128, block_size=16, key_len=16. */
+    // u8 key[16] = {0}; /* example all zero */
+    // if (aes_api->init(&ctx, 16, key, 16) != 0) {
+    //     printf("Failed to init AES.\n");
+    //     return 1;
+    // }
+
+    // /* 3) Encrypt or Decrypt a single 16-byte block. */
+
+    // u8 plaintext[16] = {};
+    // stringToByteArray("96AB5C2FF612D9DFAAE8C31F30C42168", plaintext);
+    // u8 ciphertext[16] = {0};
+    // u8 decrypted[16]  = {0};
+
+    // aes_api->encrypt_block(&ctx, plaintext, ciphertext);
+    // aes_api->decrypt_block(&ctx, ciphertext, decrypted);
+
+    // printf("Original : ");
+    // for (int i = 0; i < 16; i++) {
+    //     printf("%02X ", plaintext[i]);
+    // }
+    // printf("\nEncrypted: ");
+    // for (int i = 0; i < 16; i++) {
+    //     printf("%02X ", ciphertext[i]);
+    // }
+    // puts("");
+    // /* 4) Dispose. */
+    // if (aes_api->dispose) {
+    //     aes_api->dispose(&ctx);
+    // }
+
+    // printf("\nDecrypted: ");
+    // for (int i = 0; i < 16; i++) {
+    //     printf("%02X ", decrypted[i]);
+    // }
+
     // /* 1) Initialize entire cryptomodule. (optional) */
     // cryptomodule_status_t rc = cryptomodule_init();
     // if (rc != CRYPTOMODULE_OK) {

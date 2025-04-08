@@ -5,21 +5,21 @@
 #include "../include/block_cipher/block_cipher.h"
 #include "../include/block_cipher/block_cipher_aes.h"
 
-void print_TestData(const TestData* data) {
+void print_TestData(const TestData *data) {
     if (data == NULL) {
         printf("TestData is NULL\n");
         return;
     }
-    printf("Key Length: %zu\n", data->key_len);
+    // printf("Key Length: %zu\n", data->key_len);
     // printf("IV Length: %zu\n", data->iv_len);
-    printf("Plaintext Length: %zu\n", data->pt_len);
-    printf("Ciphertext Length: %zu\n", data->ct_len);
+    // printf("Plaintext Length: %zu\n", data->pt_len);
+    // printf("Ciphertext Length: %zu\n", data->ct_len);
 
-    printf("Key: ");
-    for (size_t i = 0; i < data->key_len; i++) {
-        printf("%08X ", data->key[i]);
-    }
-    printf("\n");
+    // printf("Key: ");
+    // for (size_t i = 0; i < data->key_len; i++) {
+    //     printf("%08X ", data->key[i]);
+    // }
+    // printf("\n");
 
     // printf("IV: ");
     // for (size_t i = 0; i < data->iv_len; i++) {
@@ -27,15 +27,15 @@ void print_TestData(const TestData* data) {
     // }
     // printf("\n");
 
-    printf("Plaintext: ");
-    for (size_t i = 0; i < data->pt_len; i++) {
-        printf("%08X ", data->pt[i]);
-    }
-    printf("\n");
+    // printf("Plaintext: ");
+    // for (size_t i = 0; i < data->pt_len; i++) {
+    //     printf("%08X ", data->pt[i]);
+    // }
+    // printf("\n");
 
-    printf("Ciphertext: ");
+    // printf("Ciphertext: ");
     for (size_t i = 0; i < data->ct_len; i++) {
-        printf("%08X ", data->ct[i]);
+        printf("%08x", data->ct[i]);
     }
     printf("\n");
 }
@@ -60,7 +60,7 @@ void progress_bar(int current, int total) {
     printf("%s] %d%% (%d/%d)", RESET, (int)(progress * 100.0), current, total);    
 }
 
-void free_TestData(TestData* data) {
+void free_TestData(TestData *data) {
     if (data) {
         free(data->key);
         free(data->iv);
@@ -69,7 +69,7 @@ void free_TestData(TestData* data) {
     }
 }
 
-void parse_hexline(u32* dst, const char* src, size_t length) {
+void parse_hexline(u32 *dst, const char* src, size_t length) {
     for (size_t i = 0; i < length; i++) {
         u32 value = 0;
         if (sscanf(src + i * 8, "%08X", &value) != 1) {
@@ -94,7 +94,7 @@ void parse_hexline(u32* dst, const char* src, size_t length) {
     // }
 }
 
-size_t word_length(const char* string) {
+size_t word_length(const char *string) {
     size_t string_length = strlen(string);
     size_t word_length = string_length / 8; // 0x00 = 1 word
     // if (string_length % 8 != 0) {
@@ -104,7 +104,7 @@ size_t word_length(const char* string) {
     return word_length;
 }
 
-size_t byte_length(const char* string) {
+size_t byte_length(const char *string) {
     size_t string_length = strlen(string);
     size_t byte_length = string_length / 2; // 0x00 = 1 byte
     if (string_length % 2 != 0) {
@@ -114,9 +114,9 @@ size_t byte_length(const char* string) {
     return byte_length;
 }
 
-bool read_TestData(FILE* fp, TestData* data) {
+bool read_TestData(FILE *fp, TestData *data) {
     char line[MAX_LINE_LENGTH];
-    size_t key_len = 0, iv_len = 0, pt_len = 0, ct_len = 0;
+    size_t key_len = 0, pt_len = 0, ct_len = 0;
 
     // Read the key
     if (fgets(line, sizeof(line), fp) != NULL) {
@@ -126,11 +126,11 @@ bool read_TestData(FILE* fp, TestData* data) {
     }
 
     // Read the IV
-    if (fgets(line, sizeof(line), fp) != NULL) {
-        iv_len = word_length(line);
-        data->iv = (u32*)malloc(iv_len * sizeof(u32));
-        parse_hexline(data->iv, line, iv_len);
-    }
+    // if (fgets(line, sizeof(line), fp) != NULL) {
+    //     iv_len = word_length(line);
+    //     data->iv = (u32*)malloc(iv_len * sizeof(u32));
+    //     parse_hexline(data->iv, line, iv_len);
+    // }
 
     // Read the plaintext
     if (fgets(line, sizeof(line), fp) != NULL) {
@@ -147,21 +147,21 @@ bool read_TestData(FILE* fp, TestData* data) {
     }
 
     data->key_len = key_len;
-    data->iv_len = iv_len;
+    // data->iv_len = iv_len;
     data->pt_len = pt_len;
     data->ct_len = ct_len;
 
     return true;
 }
 
-void write_TestData(FILE* fp, const u32* data, size_t length) {
+void write_TestData(FILE *fp, const u32 *data, size_t length) {
     for (size_t i = 0; i < length; i++) {
         fprintf(fp, "%08X", data[i]);
     }
     fprintf(fp, "\n");
 }
 
-bool compare_TestData(const TestData* data1, const TestData* data2) {
+bool compare_TestData(const TestData *data1, const TestData *data2) {
     if (data1->key_len != data2->key_len || 
         data1->iv_len != data2->iv_len || 
         data1->pt_len != data2->pt_len || 
@@ -179,9 +179,9 @@ bool compare_TestData(const TestData* data1, const TestData* data2) {
     return true;
 }
 
-void create_BlockCipher_KAT_ReqFile(const char* filename_fax, const char* filename_req) {
+void create_BlockCipher_KAT_ReqFile(const char *filename_fax, const char *filename_req) {
     FILE *fp_fax, *fp_req;
-    char* line;
+    char *line;
     size_t bufsize = MAX_LINE_LENGTH;
     int is_first_key = 1;
 
@@ -227,9 +227,9 @@ void create_BlockCipher_KAT_ReqFile(const char* filename_fax, const char* filena
     printf("Created request file: %s\n", filename_req);
 }
 
-void create_BlockCipher_KAT_RspFile(const char* filename_req, const char* filename_rsp) {
+void create_BlockCipher_KAT_RspFile(const char *filename_req, const char *filename_rsp) {
     FILE *fp_req, *fp_rsp;
-    char* line;
+    char *line;
     size_t bufsize = MAX_LINE_LENGTH;
     int is_first_key = 1;
 
@@ -264,9 +264,21 @@ void create_BlockCipher_KAT_RspFile(const char* filename_req, const char* filena
     }
     memset(data, 0, sizeof(TestData));
 
+    const BlockCipherApi *aes_api = get_aes_api();
+    if (!aes_api) {
+        fprintf(stderr, "[RSP] No AES API available.\n");
+        free(line);
+        fclose(fp_req);
+        fclose(fp_rsp);
+        free(data);
+        return;
+    }
+    BlockCipherContext ctx;
+
     // Read the request file line by line and write the response file
     while(fgets(line, bufsize, fp_req)) {
         if (strncmp(line, "KEY =", 5) == 0) {
+            clear_ctx(&ctx);
             if (!is_first_key) {
                 fprintf(fp_rsp, "\n");
             } is_first_key = 0;
@@ -318,20 +330,9 @@ void create_BlockCipher_KAT_RspFile(const char* filename_req, const char* filena
             }
             fprintf(fp_rsp, "CT = ");
 
-            const BlockCipherApi* aes_api = get_aes_api();
-            if (!aes_api) {
-                fprintf(stderr, "No AES API available.\n");
-                free(line);
-                fclose(fp_req);
-                fclose(fp_rsp);
-                free(data);
-                return;
-            }
-
-            BlockCipherContext ctx;
-            clear_ctx(&ctx);
-
-            if (aes_api->init(&ctx, data->key_len * sizeof(u32), (u8*)data->key, data->key_len * sizeof(u32)) != 0) {
+            // puts("Before=");
+            // print_cipher_internal(&ctx, aes_api->name);
+            if (aes_api->init(&ctx, data->pt_len * sizeof(u32), (u8*)data->key, data->key_len * sizeof(u32)) != 0) {
                 fprintf(stderr, "AES init failed (maybe invalid block/key size)\n");
                 free(line);
                 fclose(fp_req);
@@ -341,38 +342,85 @@ void create_BlockCipher_KAT_RspFile(const char* filename_req, const char* filena
                 return;
             }
 
-            // Ensure ciphertext length matches the block size
-            if (data->ct_len != data->pt_len) {
-                data->ct_len = data->pt_len;
-            }
+            // puts("After=");
+            // print_cipher_internal(&ctx, aes_api->name);
+            u8 data_ptr[16] = {0,};
+            u8 encrypted_data[16] = {0,};
+            word2byte(data->pt, data_ptr);
 
-            if (data->ct == NULL) {
-                data->ct = (u32*)malloc(data->ct_len * sizeof(u32));
-                if (data->ct == NULL) {
-                    fprintf(stderr, "Memory allocation error for ciphertext buffer\n");
-                    free(line);
-                    fclose(fp_req);
-                    fclose(fp_rsp);
-                    free(data);
-                    return;
-                }
-            }
-            aes_api->encrypt_block(&ctx, (u8*)data->pt, (u8*)data->ct);
-
+            aes_api->encrypt_block(&ctx, data_ptr, encrypted_data);
+            byte2word(encrypted_data, data->ct);
             for (size_t i = 0; i < data->ct_len; i++) {
-                fprintf(fp_rsp, "%08X", data->ct[i]);
+                fprintf(fp_rsp, "%08x", data->ct[i]);
             }
-            fprintf(fp_rsp, "\n");
 
+            // for (size_t i = 0; i < data->ct_len; i++) {
+            //     fprintf(fp_rsp, "%08X", data->ct[i]);
+            // }
+            fprintf(fp_rsp, "\n");
             if (aes_api->dispose) {
                 aes_api->dispose(&ctx);
             }
 
+            // const BlockCipherApi* aes_api = get_aes_api();
+            // if (!aes_api) {
+            //     fprintf(stderr, "No AES API available.\n");
+            //     free(line);
+            //     fclose(fp_req);
+            //     fclose(fp_rsp);
+            //     free(data);
+            //     return;
+            // }
+
+            // BlockCipherContext ctx;
+            // clear_ctx(&ctx);
+
+            // if (aes_api->init(&ctx, data->key_len * sizeof(u32), (u8*)data->key, data->key_len * sizeof(u32)) != 0) {
+            //     fprintf(stderr, "AES init failed (maybe invalid block/key size)\n");
+            //     free(line);
+            //     fclose(fp_req);
+            //     fclose(fp_rsp);
+            //     free_TestData(data);
+            //     free(data);
+            //     return;
+            // }
+
+            // // Ensure ciphertext length matches the block size
+            // if (data->ct_len != data->pt_len) {
+            //     data->ct_len = data->pt_len;
+            // }
+
+            // if (data->ct == NULL) {
+            //     data->ct = (u32*)malloc(data->ct_len * sizeof(u32));
+            //     if (data->ct == NULL) {
+            //         fprintf(stderr, "Memory allocation error for ciphertext buffer\n");
+            //         free(line);
+            //         fclose(fp_req);
+            //         fclose(fp_rsp);
+            //         free(data);
+            //         return;
+            //     }
+            // }
+            // aes_api->encrypt_block(&ctx, (u8*)data->pt, (u8*)data->ct);
+
+            // for (size_t i = 0; i < data->ct_len; i++) {
+            //     fprintf(fp_rsp, "%08X", data->ct[i]);
+            // }
+            // fprintf(fp_rsp, "\n");
+
+            // if (aes_api->dispose) {
+            //     aes_api->dispose(&ctx);
+            // }
+
         }
     }
 
-    print_TestData(data);
-    free(data);
+    // print_TestData(data);
+    free_TestData(data);
+    free(line);
+    fclose(fp_req);
+    fclose(fp_rsp);
+    printf("Created response file: %s\n", filename_rsp);
 }
 
 void KAT_TEST_BLOCKCIPHER_AES(void) {
@@ -382,7 +430,7 @@ void KAT_TEST_BLOCKCIPHER_AES(void) {
     char filename_req[100];
     char filename_rsp[100];
 
-    snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "AES128(ECB)KAT.tax");
+    snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "AES128(ECB)KAT.fax");
     snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "AES128(ECB)KAT.req");
     snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "AES128(ECB)KAT.rsp");
 
@@ -441,9 +489,40 @@ void KAT_TEST_BLOCKCIPHER_AES(void) {
 
         if (!compare_TestData(data_fax, data_rsp)) {
             fprintf(stderr, "\nTest vector %d failed verification\n", i + 1);
+            printf("[%d-th Error!!!]\n", i);
+            printf("Expected Key: ");
+            for (size_t j = 0; j < data_fax->key_len; j++) {
+                printf("%08x", data_fax->key[j]);
+            }
+            printf("\nActual Key  : ");
+            for (size_t j = 0; j < data_rsp->key_len; j++) {
+                printf("%08x", data_rsp->key[j]);
+            }
+            printf("\nExpected PT : ");
+            for (size_t j = 0; j < data_fax->pt_len; j++) {
+                printf("%08x", data_fax->pt[j]);
+            }
+            printf("\nActual PT  : ");
+            for (size_t j = 0; j < data_rsp->pt_len; j++) {
+                printf("%08x", data_rsp->pt[j]);
+            }
+            printf("\nExpected CT : ");
+            for (size_t j = 0; j < data_fax->ct_len; j++) {
+                printf("%08x", data_fax->ct[j]);
+            }
+            printf("\nActual CT  : ");
+            for (size_t j = 0; j < data_rsp->ct_len; j++) {
+                printf("%08x", data_rsp->ct[j]);
+            }
+            
+
+            // printf("Expected: "); print_TestData(data_fax);
+            // printf("Actual  : "); print_TestData(data_rsp);
             result = false;
             break;
         }
+
+        usleep(50000); // Sleep for 50 milliseconds to slow down the progress bar
 
         free_TestData(data_fax);
         free_TestData(data_rsp);
@@ -462,8 +541,6 @@ void KAT_TEST_BLOCKCIPHER_AES(void) {
     // Cleanup
     free_TestData(data_fax);
     free_TestData(data_rsp);
-    free(data_fax);
-    free(data_rsp);
     fclose(fp_fax);
     fclose(fp_rsp);
 }

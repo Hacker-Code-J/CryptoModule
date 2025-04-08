@@ -67,6 +67,8 @@ run: build
 clean:
 	@echo "[CLEAN] Removing build artifacts..."
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
+	@echo "[CLEAN] Removing *.req and *.rsp files in testvectors folder..."
+	find testvectors -type f \( -name '*.req' -o -name '*.rsp' \) -delete
 
 ###############################################################################
 # 4) rebuild : clean + build

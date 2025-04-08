@@ -48,21 +48,6 @@ static void aes_dispose(BlockCipherContext *ctx);
  * @brief The AES block cipher API.
  * @details This structure contains function pointers to the AES encryption and decryption functions,
  *          as well as the initialization and disposal functions.
- *          The AES algorithm is a symmetric key block cipher that operates on 128-bit blocks of data
- *          using keys of 128, 192, or 256 bits.
- *          The AES algorithm is widely used in various applications, including secure communications,
- *          data encryption, and file protection.
- *          The AES API provides a simple interface for initializing the cipher, encrypting and decrypting data,
- *          and disposing of the cipher context.
- *          The AES algorithm is based on a substitution-permutation network (SPN) structure,
- *          which consists of a series of rounds that involve substitution, permutation, and mixing operations.
- *          The number of rounds depends on the key length:
- *          - AES-128: 10 rounds
- *          - AES-192: 12 rounds
- *          - AES-256: 14 rounds
- *          The AES API provides a consistent interface for different key lengths,
- *          allowing users to choose the desired key length based on their security requirements.
- *          The AES API is designed to be easy to use and efficient, making it suitable for a wide range of applications.
  */
 static const BlockCipherApi AES_API = {
     .name          = "AES",
@@ -72,37 +57,30 @@ static const BlockCipherApi AES_API = {
     .dispose       = aes_dispose
 };
 
-/* Public function declared in block_cipher_aes.h */
-const BlockCipherApi* get_aes_api(void) { return &AES_API; }
-
 /**
- * @brief The internal structure for AES encryption.
- * @details This structure contains the state of the AES algorithm, including the round keys and the number of rounds.
- *          The round keys are derived from the original key using the key expansion algorithm.
- *          The number of rounds depends on the key length:
- *          - AES-128: 10 rounds
- *          - AES-192: 12 rounds
- *          - AES-256: 14 rounds
+ * @brief Get the AES block cipher API.
+ * @return Pointer to the AES block cipher API structure.
+ * @details This function returns a pointer to the AES block cipher API structure,
+ *          which contains function pointers for AES encryption and decryption operations.
  */
+const BlockCipherApi *get_aes_api(void) { return &AES_API; }
 
-
-/* Forward declarations of static functions. */
-int aes_enc_key_expansion(AesInternal* st, const u8* in, u32* out);   //  AES Encryption Key Expansion
-// static int aes_dec_key_expansion(AesInternal* st, const u8* in, u8* out);   //  AES Decryption Key Expansion
-
-/* ********** AES key expansion functions ********** */
-int aes_enc_key_expansion(AesInternal* st, const u8* in, u32* out) {
-    if (!st || !in || !out) return -1;
-    if (st->key_len != 16 && st->key_len != 24 && st->key_len != 32) return -1;  /* unsupported key length */
+int aes_enc_key_expansion(BlockCipherContext *ctx, const u8 *in, u32 *out) {
+    if (!ctx || !in || !out) return -1;
+    if (ctx->internal_data.aes_internal.key_len != 16 && 
+        ctx->internal_data.aes_internal.key_len != 24 && 
+        ctx->internal_data.aes_internal.key_len != 32) return -1;  /* unsupported key length */
 
     u32 temp;
     int i, n;
 
-    for (i = 0; i < st->key_len / 4; i++) {
+    n = ctx->internal_data.aes_internal.key_len / 4;
+
+
+    for (i = 0; i < n; i++) {
         out[i] = GETU32(in + (i * 4));
     }
 
-    n = st->key_len / 4;
     for (i = n; i < ((n + 6) + 1) * 4; i++) {
         temp = out[i - 1];
         if (i % n == 0) {
@@ -122,37 +100,34 @@ int aes_enc_key_expansion(AesInternal* st, const u8* in, u32* out) {
 }
 
 /* ********** Implementation of the function pointers ********** */
-
-static int aes_init(BlockCipherContext* ctx,
-                    size_t block_size,
-                    const u8* key,
-                    size_t key_len) {
+static int aes_init(BlockCipherContext *ctx, size_t block_size, const u8 *key, size_t key_len) {
     if (!ctx || !key) return -1;
+    if (block_size != 16) return -1; /* AES typically 128-bit block size */
+    if (key_len != 16 && key_len != 24 && key_len != 32) {
+        return -1; /* only AES-128, 192, or 256 */
+    }
 
-    /* AES: block_size must be 16. */
-    if (block_size != 16) return -1;  /* unsupported block size for AES */
-
-    /* For AES, key_len can be 16, 24, or 32 bytes. */
-    if (key_len != 16 && key_len != 24 && key_len != 32) return -1;  /* unsupported key length */
-
-    /* Link the context to the vtable. */
-    ctx->api = &AES_API;
-    AesInternal* st = &ctx->aes_internal;
-    if (!st) {
+    ctx->api = get_aes_api(); /* Link the context to the vtable. */
+    if (!ctx->api) {
         return -1; /* internal_data is not properly allocated */
     }
-    memset(st, 0, sizeof(*st));
+    memset(ctx, 0, sizeof(*ctx)); /* Initialize the context. */
 
-    /* store block_size & key_len for reference. */
-    st->block_size = block_size;
-    st->key_len    = key_len;
+    /* Our AES sub-struct is 'aes_internal' inside the union. */
+    ctx->internal_data.aes_internal.block_size = block_size;
+    ctx->internal_data.aes_internal.key_len    = key_len;
+    memset(ctx->internal_data.aes_internal.round_keys, 0,
+    sizeof(ctx->internal_data.aes_internal.round_keys));
 
-    /* Perform key expansion based on key length. */
-    switch (key_len) {
-        case 16: st->nr = 10; aes_enc_key_expansion(st, key, st->round_keys); break;
-        case 24: st->nr = 12; aes_enc_key_expansion(st, key, st->round_keys); break;
-        case 32: st->nr = 14; aes_enc_key_expansion(st, key, st->round_keys); break;
-        default: return -1; /* should never happen */
+    /* Suppose we do a real key expansion here... */
+    // e.g. compute round_keys, set nr=10 for AES-128, etc.
+    // We'll just store nr = 10 if key_len=16, 12 if key_len=24, 14 if key_len=32.
+
+    aes_enc_key_expansion(ctx, key, ctx->internal_data.aes_internal.round_keys);
+    switch(key_len) {
+        case 16: ctx->internal_data.aes_internal.nr = 10; break;
+        case 24: ctx->internal_data.aes_internal.nr = 12; break;
+        case 32: ctx->internal_data.aes_internal.nr = 14; break;
     }
 
     return 0; /* success */
@@ -160,20 +135,13 @@ static int aes_init(BlockCipherContext* ctx,
 
 static void aes_encrypt(BlockCipherContext *ctx, const u8 *pt, u8 *ct) {
     if (!ctx || !pt || !ct) return;
-    AesInternal* st = &ctx->aes_internal;
-
-    /* Real code would do AES encryption. 
-    We'll do a trivial mock: XOR with 0xAA for demonstration. */
-    // for (size_t i = 0; i < st->block_size; i++) {
-    //     ct[i] = pt[i] ^ 0xAA;
-    // }
-
+    
     const u32* rk;
     u32 s0, s1, s2, s3, t0, t1, t2, t3;
     int r;
 
-    rk = st->round_keys; 
-    r = st->nr;
+    rk = ctx->internal_data.aes_internal.round_keys;
+    r = ctx->internal_data.aes_internal.nr;
 
     /*
      * map byte array block to cipher state
@@ -291,20 +259,302 @@ static void aes_encrypt(BlockCipherContext *ctx, const u8 *pt, u8 *ct) {
 
 static void aes_decrypt(BlockCipherContext *ctx, const u8 *ct, u8 *pt) {
     if (!ctx || !ct || !pt) return;
-    AesInternal* st = &ctx->aes_internal;
+    
+    const u32 *rk;
+    u32 s0, s1, s2, s3, t0, t1, t2, t3;
+    int r;
 
-    /* trivial mock: XOR with 0xAA again. */
-    for (size_t i = 0; i < st->block_size; i++) {
-    pt[i] = ct[i] ^ 0xAA;
+    rk = ctx->internal_data.aes_internal.round_keys;
+    r = ctx->internal_data.aes_internal.nr;
+
+    /*
+     * map byte array block to cipher state
+     * and add initial round key:
+     */
+    s0 = GETU32(pt     ) ^ rk[0];
+    s1 = GETU32(pt +  4) ^ rk[1];
+    s2 = GETU32(pt +  8) ^ rk[2];
+    s3 = GETU32(pt + 12) ^ rk[3];
+    /* round 1: */
+    t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ rk[ 4];
+    t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ rk[ 5];
+    t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ rk[ 6];
+    t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ rk[ 7];
+    /* round 2: */
+    s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ rk[ 8];
+    s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ rk[ 9];
+    s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ rk[10];
+    s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ rk[11];
+    /* round 3: */
+    t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ rk[12];
+    t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ rk[13];
+    t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ rk[14];
+    t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ rk[15];
+    /* round 4: */
+    s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ rk[16];
+    s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ rk[17];
+    s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ rk[18];
+    s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ rk[19];
+    /* round 5: */
+    t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ rk[20];
+    t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ rk[21];
+    t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ rk[22];
+    t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ rk[23];
+    /* round 6: */
+    s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ rk[24];
+    s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ rk[25];
+    s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ rk[26];
+    s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ rk[27];
+    /* round 7: */
+    t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ rk[28];
+    t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ rk[29];
+    t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ rk[30];
+    t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ rk[31];
+    /* round 8: */
+    s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ rk[32];
+    s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ rk[33];
+    s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ rk[34];
+    s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ rk[35];
+    /* round 9: */
+    t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ rk[36];
+    t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ rk[37];
+    t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ rk[38];
+    t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ rk[39];
+    if (r > 10) {
+        /* round 10: */
+        s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ rk[40];
+        s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ rk[41];
+        s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ rk[42];
+        s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ rk[43];
+        /* round 11: */
+        t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ rk[44];
+        t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ rk[45];
+        t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ rk[46];
+        t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ rk[47];
+        if (r > 12) {
+            /* round 12: */
+            s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ rk[48];
+            s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ rk[49];
+            s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ rk[50];
+            s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ rk[51];
+            /* round 13: */
+            t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ rk[52];
+            t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ rk[53];
+            t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ rk[54];
+            t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ rk[55];
+        }
     }
+    rk += r << 2;
+
+    /*
+     * apply last round and
+     * map cipher state to byte array block:
+     */
+    s0 =
+        ((u32)Td4[(t0 >> 24)       ] << 24) ^
+        ((u32)Td4[(t3 >> 16) & 0xff] << 16) ^
+        ((u32)Td4[(t2 >>  8) & 0xff] <<  8) ^
+        ((u32)Td4[(t1      ) & 0xff])       ^
+        rk[0];
+    PUTU32(pt     , s0);
+    s1 =
+        ((u32)Td4[(t1 >> 24)       ] << 24) ^
+        ((u32)Td4[(t0 >> 16) & 0xff] << 16) ^
+        ((u32)Td4[(t3 >>  8) & 0xff] <<  8) ^
+        ((u32)Td4[(t2      ) & 0xff])       ^
+        rk[1];
+    PUTU32(pt +  4, s1);
+    s2 =
+        ((u32)Td4[(t2 >> 24)       ] << 24) ^
+        ((u32)Td4[(t1 >> 16) & 0xff] << 16) ^
+        ((u32)Td4[(t0 >>  8) & 0xff] <<  8) ^
+        ((u32)Td4[(t3      ) & 0xff])       ^
+        rk[2];
+    PUTU32(pt +  8, s2);
+    s3 =
+        ((u32)Td4[(t3 >> 24)       ] << 24) ^
+        ((u32)Td4[(t2 >> 16) & 0xff] << 16) ^
+        ((u32)Td4[(t1 >>  8) & 0xff] <<  8) ^
+        ((u32)Td4[(t0      ) & 0xff])       ^
+        rk[3];
+    PUTU32(pt + 12, s3);
 }
 
 static void aes_dispose(BlockCipherContext *ctx) {
     if (!ctx) return;
-    AesInternal* st = &ctx->aes_internal;
-    /* zero out everything */
-    memset(st, 0, sizeof(*st));
+    // Clear the key material in aes_internal
+    memset(&ctx->internal_data.aes_internal, 0,
+    sizeof(ctx->internal_data.aes_internal));
 }
+
+
+
+// static void aes_encrypt(BlockCipherContext *ctx, const u8 *pt, u8 *ct) {
+//     if (!ctx || !pt || !ct) return;
+//     AesInternal* st = &ctx->aes_internal;
+
+//     /* Real code would do AES encryption. 
+//     We'll do a trivial mock: XOR with 0xAA for demonstration. */
+//     // for (size_t i = 0; i < st->block_size; i++) {
+//     //     ct[i] = pt[i] ^ 0xAA;
+//     // }
+
+//     const u32* rk;
+//     u32 s0, s1, s2, s3, t0, t1, t2, t3;
+//     int r;
+
+//     rk = st->round_keys; 
+//     r = st->nr;
+
+//     /*
+//      * map byte array block to cipher state
+//      * and add initial round key:
+//      */
+//     s0 = GETU32(pt     ) ^ rk[0];
+//     s1 = GETU32(pt +  4) ^ rk[1];
+//     s2 = GETU32(pt +  8) ^ rk[2];
+//     s3 = GETU32(pt + 12) ^ rk[3];
+
+//     /* round 1: */
+//     t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ rk[ 4];
+//     t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ rk[ 5];
+//     t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ rk[ 6];
+//     t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ rk[ 7];
+//     /* round 2: */
+//     s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ rk[ 8];
+//     s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ rk[ 9];
+//     s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ rk[10];
+//     s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ rk[11];
+//     /* round 3: */
+//     t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ rk[12];
+//     t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ rk[13];
+//     t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ rk[14];
+//     t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ rk[15];
+//     /* round 4: */
+//     s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ rk[16];
+//     s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ rk[17];
+//     s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ rk[18];
+//     s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ rk[19];
+//     /* round 5: */
+//     t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ rk[20];
+//     t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ rk[21];
+//     t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ rk[22];
+//     t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ rk[23];
+//     /* round 6: */
+//     s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ rk[24];
+//     s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ rk[25];
+//     s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ rk[26];
+//     s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ rk[27];
+//     /* round 7: */
+//     t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ rk[28];
+//     t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ rk[29];
+//     t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ rk[30];
+//     t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ rk[31];
+//     /* round 8: */
+//     s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ rk[32];
+//     s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ rk[33];
+//     s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ rk[34];
+//     s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ rk[35];
+//     /* round 9: */
+//     t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ rk[36];
+//     t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ rk[37];
+//     t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ rk[38];
+//     t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ rk[39];
+//     if (r > 10) {
+//         /* round 10: */
+//         s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ rk[40];
+//         s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ rk[41];
+//         s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ rk[42];
+//         s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ rk[43];
+//         /* round 11: */
+//         t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ rk[44];
+//         t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ rk[45];
+//         t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ rk[46];
+//         t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ rk[47];
+//         if (r > 12) {
+//             /* round 12: */
+//             s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ rk[48];
+//             s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ rk[49];
+//             s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ rk[50];
+//             s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ rk[51];
+//             /* round 13: */
+//             t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ rk[52];
+//             t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ rk[53];
+//             t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ rk[54];
+//             t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ rk[55];
+//         }
+//     }
+//     rk += r << 2;
+
+//     /*
+//      * apply last round and
+//      * map cipher state to byte array block:
+//      */
+//     s0 =
+//         (Te2[(t0 >> 24)       ] & 0xff000000) ^
+//         (Te3[(t1 >> 16) & 0xff] & 0x00ff0000) ^
+//         (Te0[(t2 >>  8) & 0xff] & 0x0000ff00) ^
+//         (Te1[(t3      ) & 0xff] & 0x000000ff) ^
+//         rk[0];
+//     PUTU32(ct     , s0);
+//     s1 =
+//         (Te2[(t1 >> 24)       ] & 0xff000000) ^
+//         (Te3[(t2 >> 16) & 0xff] & 0x00ff0000) ^
+//         (Te0[(t3 >>  8) & 0xff] & 0x0000ff00) ^
+//         (Te1[(t0      ) & 0xff] & 0x000000ff) ^
+//         rk[1];
+//     PUTU32(ct +  4, s1);
+//     s2 =
+//         (Te2[(t2 >> 24)       ] & 0xff000000) ^
+//         (Te3[(t3 >> 16) & 0xff] & 0x00ff0000) ^
+//         (Te0[(t0 >>  8) & 0xff] & 0x0000ff00) ^
+//         (Te1[(t1      ) & 0xff] & 0x000000ff) ^
+//         rk[2];
+//     PUTU32(ct +  8, s2);
+//     s3 =
+//         (Te2[(t3 >> 24)       ] & 0xff000000) ^
+//         (Te3[(t0 >> 16) & 0xff] & 0x00ff0000) ^
+//         (Te0[(t1 >>  8) & 0xff] & 0x0000ff00) ^
+//         (Te1[(t2      ) & 0xff] & 0x000000ff) ^
+//         rk[3];
+//     PUTU32(ct + 12, s3);
+// }
+
+// static void aes_decrypt(BlockCipherContext *ctx, const u8 *ct, u8 *pt) {
+//     if (!ctx || !ct || !pt) return;
+//     AesInternal* st = &ctx->aes_internal;
+
+//     /* trivial mock: XOR with 0xAA again. */
+//     for (size_t i = 0; i < st->block_size; i++) {
+//     pt[i] = ct[i] ^ 0xAA;
+//     }
+// }
+
+// static void aes_dispose(BlockCipherContext *ctx) {
+//     if (!ctx) return;
+//     AesInternal* st = &ctx->aes_internal;
+//     /* zero out everything */
+//     memset(st, 0, sizeof(*st));
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // #include "../../include/blockcipher/block_cipher_aes.h"
