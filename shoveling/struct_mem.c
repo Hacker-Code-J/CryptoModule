@@ -82,7 +82,7 @@ typedef union CipherInternal {
 } CipherInternal;
 
 struct BlockCipherContext {
-    const BlockCipherApi *api;  
+    const BlockCipherApi* api;  
     CipherInternal internal_data; /* Generic internal state for any cipher */
 };
 

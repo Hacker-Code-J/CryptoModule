@@ -298,125 +298,173 @@ I have developed a cryptographic software module in the C language, with an emph
 	;
 \end{tikzpicture}
 \end{center}
-The code base is organized to reflect modular cryptographic primitives and functionality. The main directories and their purposes are outlined below:
-
-\begin{itemize}
-	\item \textbf{include/}: Contains all public headers for cryptographic modules.
-	\begin{itemize}
-		\item \texttt{cryptomodule/block/}: Headers for block cipher implementations (e.g., AES).
-		\item \texttt{cryptomodule/mode/}: Headers for modes of operation (CBC, CTR, GCM, etc.).
-		\item \texttt{cryptomodule/rng/}: Headers for random number generators.
-		\item \texttt{cryptomodule/hash/}: Headers for hash functions (e.g., SHA-256, SHA-512).
-		\item \texttt{cryptomodule/mac/}: Headers for message authentication codes (e.g., HMAC).
-		\item \texttt{cryptomodule/kdf/}: Headers for key derivation functions (PBKDF, HKDF, etc.).
-		\item \texttt{cryptomodule/keysetup/}: Headers for key exchange primitives (ECDH).
-		\item \texttt{cryptomodule/sign/}: Headers for signature algorithms (ECDSA, RSA, etc.).
-	\end{itemize}
-	
-	\item \textbf{src/}: Contains the corresponding C/ASM source files for each cryptographic category.
-	\begin{itemize}
-		\item \texttt{block/}, \texttt{mode/}, \texttt{rng/}, \texttt{hash/}, \texttt{mac/}, \texttt{kdf/}, \texttt{keysetup/}, \texttt{sign/}
-	\end{itemize}
-	
-	\item \textbf{tests/}: Houses unit tests and integration tests for all cryptographic modules.
-	
-	\item \textbf{Makefile}: Defines how to build and link the libraries and tests. Contains flags for C and ASM code.
-	
-	\item \textbf{README.md}: Provides a high-level overview of the project, including build instructions and usage examples.
-\end{itemize}
-
-\subsection{Hierarchy and Relationships}
-
-Each functional category (block cipher, hash, etc.) is encapsulated in its own subdirectory to keep code organized and maintainable. Corresponding header files in \texttt{include/cryptomodule/} expose the public API, while the implementations in \texttt{src/} include both C and, where appropriate, ASM files for optimized routines.
-
-\section{Build Tools and Dependencies}
-
-A standard Unix-like build environment is assumed, with the following tools and dependencies required:
-
-\begin{itemize}
-	\item \textbf{Compiler} (e.g., \texttt{gcc} or \texttt{clang}) with support for assembling inline or separate ASM files.
-	\item \textbf{Make} (GNU Make) to use the provided \texttt{Makefile}.
-	\item \textbf{CMake (optional)}: Some teams prefer CMake-based workflows; a \texttt{CMakeLists.txt} can also be maintained for cross-platform compatibility.
-	\item \textbf{Perl/Python (optional)}: May be required for certain test scripts, code generation, or performance analysis scripts.
-	\item \textbf{OpenSSL (optional)}: Useful for comparing test vectors or for using the system’s cryptographic library as a reference.
-\end{itemize}
-
-When building the library, you can enable or disable specific optimizations or algorithms by modifying the \texttt{Makefile} (or \texttt{CMakeLists.txt}, if you choose to add one). For instance, enabling ASM routines for AES might require additional flags like:
-\begin{lstlisting}
-	CFLAGS += -march=native -maes
-\end{lstlisting}
-depending on your target CPU capabilities.
-
-\subsection{Environment Configuration}
-
-Before compiling, ensure that your development environment is set up with the correct paths. For instance:
-\begin{lstlisting}
-	export CC=gcc
-	export AS=nasm     # or another assembler if preferred
-	export CFLAGS="-O2 -Wall -Wextra"
-\end{lstlisting}
-Adjust these variables as needed based on your local toolchain and performance requirements.
-
-\section{Coding Guidelines}
-
-All C code should follow a consistent style (e.g., \texttt{K\&R} or \texttt{LLVM} style) with adequate comments explaining the purpose and usage of functions. Inline ASM or standalone ASM files should use readable label names, and macros must be well-documented to clarify any platform-specific instructions.
-
-Furthermore, each function in the cryptographic modules should include:
-\begin{itemize}
-	\item \textbf{Parameter validations}: Ensure pointers are not \texttt{NULL}, lengths are within expected ranges, etc.
-	\item \textbf{Error handling}: Return clear error codes and avoid silent failures.
-	\item \textbf{Security considerations}: Erase sensitive data buffers immediately after use to prevent leakage.
-\end{itemize}
-
-\section{Security and Maintenance Policies}
-
-Because cryptographic libraries are critical to overall system security, the project maintains strict policies regarding:
-\begin{itemize}
-	\item \textbf{Patch review}: All code changes are peer-reviewed to detect potential vulnerabilities or performance regressions.
-	\item \textbf{Regular audits}: Scheduled internal and external audits are conducted to verify compliance with best security practices.
-	\item \textbf{Versioning and backward compatibility}: Each stable release is tagged in version control, with major version increments for breaking changes.
-\end{itemize}
-
-
-\section{Overview of the Module}
-
-I chose to develop a module that provides:
-\begin{itemize}
-	\item An extremely optimized AES-based symmetric cipher routine.
-	\item A key schedule algorithm that operates quickly while preserving security.
-	\item A helper function to securely clear sensitive material from memory.
-\end{itemize}
-
+%The code base is organized to reflect modular cryptographic primitives and functionality. The main directories and their purposes are outlined below:
+%
+%\begin{itemize}
+%	\item \textbf{include/}: Contains all public headers for cryptographic modules.
+%	\begin{itemize}
+%		\item \texttt{cryptomodule/block/}: Headers for block cipher implementations (e.g., AES).
+%		\item \texttt{cryptomodule/mode/}: Headers for modes of operation (CBC, CTR, GCM, etc.).
+%		\item \texttt{cryptomodule/rng/}: Headers for random number generators.
+%		\item \texttt{cryptomodule/hash/}: Headers for hash functions (e.g., SHA-256, SHA-512).
+%		\item \texttt{cryptomodule/mac/}: Headers for message authentication codes (e.g., HMAC).
+%		\item \texttt{cryptomodule/kdf/}: Headers for key derivation functions (PBKDF, HKDF, etc.).
+%		\item \texttt{cryptomodule/keysetup/}: Headers for key exchange primitives (ECDH).
+%		\item \texttt{cryptomodule/sign/}: Headers for signature algorithms (ECDSA, RSA, etc.).
+%	\end{itemize}
+%	
+%	\item \textbf{src/}: Contains the corresponding C/ASM source files for each cryptographic category.
+%	\begin{itemize}
+%		\item \texttt{block/}, \texttt{mode/}, \texttt{rng/}, \texttt{hash/}, \texttt{mac/}, \texttt{kdf/}, \texttt{keysetup/}, \texttt{sign/}
+%	\end{itemize}
+%	
+%	\item \textbf{tests/}: Houses unit tests and integration tests for all cryptographic modules.
+%	
+%	\item \textbf{Makefile}: Defines how to build and link the libraries and tests. Contains flags for C and ASM code.
+%	
+%	\item \textbf{README.md}: Provides a high-level overview of the project, including build instructions and usage examples.
+%\end{itemize}
+%
+%\subsection{Hierarchy and Relationships}
+%
+%Each functional category (block cipher, hash, etc.) is encapsulated in its own subdirectory to keep code organized and maintainable. Corresponding header files in \texttt{include/cryptomodule/} expose the public API, while the implementations in \texttt{src/} include both C and, where appropriate, ASM files for optimized routines.
+%
+%\section{Build Tools and Dependencies}
+%
+%A standard Unix-like build environment is assumed, with the following tools and dependencies required:
+%
+%\begin{itemize}
+%	\item \textbf{Compiler} (e.g., \texttt{gcc} or \texttt{clang}) with support for assembling inline or separate ASM files.
+%	\item \textbf{Make} (GNU Make) to use the provided \texttt{Makefile}.
+%	\item \textbf{CMake (optional)}: Some teams prefer CMake-based workflows; a \texttt{CMakeLists.txt} can also be maintained for cross-platform compatibility.
+%	\item \textbf{Perl/Python (optional)}: May be required for certain test scripts, code generation, or performance analysis scripts.
+%	\item \textbf{OpenSSL (optional)}: Useful for comparing test vectors or for using the system’s cryptographic library as a reference.
+%\end{itemize}
+%
+%When building the library, you can enable or disable specific optimizations or algorithms by modifying the \texttt{Makefile} (or \texttt{CMakeLists.txt}, if you choose to add one). For instance, enabling ASM routines for AES might require additional flags like:
+%\begin{lstlisting}
+%	CFLAGS += -march=native -maes
+%\end{lstlisting}
+%depending on your target CPU capabilities.
+%
+%\subsection{Environment Configuration}
+%
+%Before compiling, ensure that your development environment is set up with the correct paths. For instance:
+%\begin{lstlisting}
+%	export CC=gcc
+%	export AS=nasm     # or another assembler if preferred
+%	export CFLAGS="-O2 -Wall -Wextra"
+%\end{lstlisting}
+%Adjust these variables as needed based on your local toolchain and performance requirements.
+%
+%\section{Coding Guidelines}
+%
+%All C code should follow a consistent style (e.g., \texttt{K\&R} or \texttt{LLVM} style) with adequate comments explaining the purpose and usage of functions. Inline ASM or standalone ASM files should use readable label names, and macros must be well-documented to clarify any platform-specific instructions.
+%
+%Furthermore, each function in the cryptographic modules should include:
+%\begin{itemize}
+%	\item \textbf{Parameter validations}: Ensure pointers are not \texttt{NULL}, lengths are within expected ranges, etc.
+%	\item \textbf{Error handling}: Return clear error codes and avoid silent failures.
+%	\item \textbf{Security considerations}: Erase sensitive data buffers immediately after use to prevent leakage.
+%\end{itemize}
+%
+%\section{Security and Maintenance Policies}
+%
+%Because cryptographic libraries are critical to overall system security, the project maintains strict policies regarding:
+%\begin{itemize}
+%	\item \textbf{Patch review}: All code changes are peer-reviewed to detect potential vulnerabilities or performance regressions.
+%	\item \textbf{Regular audits}: Scheduled internal and external audits are conducted to verify compliance with best security practices.
+%	\item \textbf{Versioning and backward compatibility}: Each stable release is tagged in version control, with major version increments for breaking changes.
+%\end{itemize}
+%
+%
+%\section{Overview of the Module}
+%
+%I chose to develop a module that provides:
+%\begin{itemize}
+%	\item An extremely optimized AES-based symmetric cipher routine.
+%	\item A key schedule algorithm that operates quickly while preserving security.
+%	\item A helper function to securely clear sensitive material from memory.
+%\end{itemize}
+%
 \section{My Development Environment}
-To ensure transparency, let me highlight the specific environment in which I developed and tested this module:
+%To ensure transparency, let me highlight the specific environment in which I developed and tested this module:
 
 \begin{itemize}
-	\item \textbf{Operating System:} I worked primarily on a Linux environment (Ubuntu 22.04 LTS) with a modern kernel (5.x series).
-	\item \textbf{Compiler:} I used \texttt{gcc} (GNU Compiler Collection) version 9.3+ and occasionally tested with \texttt{clang} to verify portability. 
-	\item \textbf{Build System:} The \texttt{make} utility (GNU Make) for building source files and orchestrating tests.
-	\item \textbf{Hardware:} An x86-64 CPU with SSE4/AES-NI instructions available (though the code also tested fine on other hardware without AES-NI).
-	\item \textbf{Additional Tools:} \texttt{valgrind} for memory checks, \texttt{gdb} for debugging, and \texttt{perf} for performance profiling.
+	\item \textbf{Operating System:} 
+\begin{verbatim}
+@>$ cat /etc/os-release
+NAME="Linux Mint"
+VERSION="21.3 (Virginia)"
+ID=linuxmint
+ID_LIKE="ubuntu debian"
+PRETTY_NAME="Linux Mint 21.3"
+VERSION_ID="21.3"
+HOME_URL="https://www.linuxmint.com/"
+SUPPORT_URL="https://forums.linuxmint.com/"
+BUG_REPORT_URL="http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/"
+PRIVACY_POLICY_URL="https://www.linuxmint.com/"
+VERSION_CODENAME=virginia
+UBUNTU_CODENAME=jammy
+
+\end{verbatim}
+	
+%	I worked primarily on a Linux environment (Ubuntu 22.04 LTS) with a modern kernel (5.x series).
+	\item \textbf{Compiler:} 
+\begin{verbatim}
+@>$	gcc --version
+gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
+Copyright (C) 2021 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+\end{verbatim}
+%	\item \textbf{Build System:} The \texttt{make} utility (GNU Make) for building source files and orchestrating tests.
+	\item \textbf{Hardware:} 
+%	An x86-64 CPU with SSE4/AES-NI instructions available (though the code also tested fine on other hardware without AES-NI).
+\begin{verbatim}
+@>$ lscpu
+Architecture:             x86_64
+  CPU op-mode(s):         32-bit, 64-bit
+  Address sizes:          48 bits physical, 48 bits virtual
+  Byte Order:             Little Endian
+CPU(s):                   16
+  On-line CPU(s) list:    0-15
+Vendor ID:                AuthenticAMD
+  Model name:             AMD Ryzen 7 5800X3D 8-Core Processor
+    CPU family:           25
+    Model:                33
+    Thread(s) per core:   2
+    CPU max MHz:          3400.0000
+    CPU min MHz:          2200.0000
+
+\end{verbatim}
+	\item \textbf{Additional Tools:} 
+	\begin{itemize}
+		\item \texttt{valgrind} for memory checks, 
+		\item \texttt{gdb} for debugging, 
+		\item and TBA %\texttt{perf} for performance profiling.
+	\end{itemize}
 \end{itemize}
-
-All of these components helped me detect issues early, confirm performance gains, and ensure that my cryptographic code was stable under various conditions.
-
-\section{System Requirements and Build Instructions}
-
-\subsection{System Requirements}
-\begin{itemize}
-	\item \textbf{C Compiler:} The module is known to build under \texttt{gcc} (9.0 or later) and \texttt{clang}.
-	\item \textbf{Make Tool:} A typical \texttt{make} environment suffices.
-	\item \textbf{Operating System:} Although I used Ubuntu Linux, any POSIX-compliant system should handle it with minimal adjustments.
-\end{itemize}
-
-\subsection{Build Instructions}
-
-\begin{enumerate}
-	\item Clone or download the module sources into a directory, say \texttt{crypto\_module/}.
-	\item Inside \texttt{crypto\_module/}, run \texttt{make} to compile everything.
-	\item The build process will generate an object file or static library (e.g., \texttt{libcrypto\_module.a}).
-	\item Link this library with your application by adding \texttt{-lcrypto\_module} (adjust name as needed) and ensure the include path is set to the module's header directory.
-\end{enumerate}
+%
+%All of these components helped me detect issues early, confirm performance gains, and ensure that my cryptographic code was stable under various conditions.
+%
+%\section{System Requirements and Build Instructions}
+%
+%\subsection{System Requirements}
+%\begin{itemize}
+%	\item \textbf{C Compiler:} The module is known to build under \texttt{gcc} (9.0 or later) and \texttt{clang}.
+%	\item \textbf{Make Tool:} A typical \texttt{make} environment suffices.
+%	\item \textbf{Operating System:} Although I used Ubuntu Linux, any POSIX-compliant system should handle it with minimal adjustments.
+%\end{itemize}
+%
+%\subsection{Build Instructions}
+%
+%\begin{enumerate}
+%	\item Clone or download the module sources into a directory, say \texttt{crypto\_module/}.
+%	\item Inside \texttt{crypto\_module/}, run \texttt{make} to compile everything.
+%	\item The build process will generate an object file or static library (e.g., \texttt{libcrypto\_module.a}).
+%	\item Link this library with your application by adding \texttt{-lcrypto\_module} (adjust name as needed) and ensure the include path is set to the module's header directory.
+%\end{enumerate}
 
 \newpage
 \chapter{Cryptographic Software Module}
@@ -470,6 +518,152 @@ D : \mathcal{K} \times \mathcal{C} \to \mathcal{M},
 	}
 	\label{tab:cipher-comparison}
 \end{table}
+
+\begin{figure}[h!]
+\begin{tikzpicture}[x=1cm, y=-0.07cm, font=\scriptsize, draw=black, >=Stealth, scale=.8]
+	% BlockCipherContext outline
+	\draw[thick] (0,0) rectangle ++(3,128);  % 128 bytes tall, 3 cm wide
+	\draw[thick] (0,8) -- ++(3,0);          % line separating api vs internal_data at 8 bytes
+	
+	% BlockCipherContext labels and offsets
+	\node[anchor=south, align=center, font=\small] at (1.5,0) {\textbf{BlockCipherContext}\\ \textbf{(544=8+536 bytes)}};
+	\node[align=center] at (1.5,4) {\texttt{BlockCipherApi*}};
+	\node[align=center] at (1.5,68) {\texttt{CipherInternal}\\ (union, 536 bytes)};
+	
+	\node[anchor=east] at (0,0) {{\tiny\ttfamily 0x000}};   % top address
+	\node[anchor=east] at (0,8) {{\tiny\ttfamily 0x008}};
+	\node[anchor=east] at (0,16) {{\tiny\ttfamily 0x010}};
+	\node[anchor=east] at (0,24) {{\tiny\ttfamily 0x018}};
+	\node[anchor=east] at (0,120) {{\tiny\ttfamily 0x210}};
+	\node[anchor=east] at (0,128) {{\tiny\ttfamily 0x220}};
+	
+	% Expand union internal_data: AES, ARIA, LEA internal structures side-by-side
+	% Base alignment line for union (offset 0x08 in context)
+	\draw[densely dashed, color=gray!50] (3,8) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x008};
+	\draw[densely dashed, color=gray!50] (3,16) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x010};
+	\draw[densely dashed, color=gray!50] (3,24) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x018};
+	\draw[densely dashed, color=gray!50] (3,45) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x100};
+	\draw[densely dashed, color=gray!50] (3,53) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x108};
+	\draw[densely dashed, color=gray!50] (3,75) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x120};
+	\draw[densely dashed, color=gray!50] (3,83) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x128};
+	\draw[densely dashed, color=gray!50] (3,120) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x210};
+	\draw[densely dashed, color=gray!50] (3,128) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x220};
+	
+	% AES internal struct (80 bytes used out of 120)
+	\draw (5,8) rectangle ++(3,120);       % union size tall (for visual alignment)
+	\draw (5,16) -- ++(3,0);
+	\draw (5,24) -- ++(3,0);
+	\draw (5,45) -- ++(3,0);
+	\draw (5,53) -- ++(3,0);
+	\node[anchor=south, align=center] at (6.5,8) {\textbf{aes\_internal}\\ \textbf{(8+8+240+8=264 bytes)}};
+	\node at (6.5,12) {\texttt{size\_t block\_size}};
+	\node at (6.5,20) {\texttt{size\_t key\_len}};
+	\node[align=center] at (6.5,36) {\texttt{u32 round\_keys[60]} \\ (240 bytes)};
+	\node at (6.5,49) {\texttt{int nr}\; (4 bytes)};
+	\node[color=gray, align=center] at (6.5,90) {\footnotesize (unused\\ \footnotesize 272 bytes)};
+	\filldraw[gray!70, opacity=.2] (5, 53) rectangle (8, 128);
+	
+	\filldraw[teal!70, opacity=.2] (5, 8) rectangle (8, 16);
+	\filldraw[orange!70, opacity=.2] (5, 16) rectangle (8, 24);
+	\filldraw[red!70, opacity=.2] (5, 24) rectangle (8, 45);
+	\filldraw[blue!70, opacity=.2] (5, 45) rectangle (8, 53);
+	
+	%	\node[anchor=east] at (5,8) {{\tiny 0x00}};
+	%	\node[anchor=east] at (5,16) {{\tiny 0x08}};
+	%	\node[anchor=east] at (5,24) {{\tiny 0x10}};
+	%	\node[anchor=east] at (5,76) {{\tiny 0x4C}};
+	%	\node[anchor=east] at (5,128) {{\tiny 0x78}};  % union full size
+	%	
+	% ARIA internal struct (same as AES, 80 bytes)
+	\draw (9,8) rectangle ++(3,120);
+	\draw (9,16) -- ++(3,0);
+	\draw (9,24) -- ++(3,0);
+	\draw (9,75) -- ++(3,0);
+	\draw (9,83) -- ++(3,0);
+	\node[anchor=south, align=center] at (10.5,8) {\textbf{aria\_internal}\\ \textbf{(8+8+272+8=296 bytes)}};
+	\node at (10.5,12) {\texttt{size\_t block\_size}};
+	\node at (10.5,20) {\texttt{size\_t key\_len}};
+	\node[align=center] at (10.5,50) {\texttt{u32 round\_keys[68]} \\ (272 bytes)};
+	\node at (10.5,79) {\texttt{int nr}\; (4 bytes)};
+	\node[color=gray, align=center] at (10.5,104) {\footnotesize (unused\\ \footnotesize 240 bytes)};
+	\filldraw[gray!70, opacity=.2] (9, 83) rectangle (12, 128);
+	
+	\filldraw[teal!70, opacity=.2] (9, 8) rectangle (12, 16);
+	\filldraw[orange!70, opacity=.2] (9, 16) rectangle (12, 24);
+	\filldraw[red!70, opacity=.2] (9, 24) rectangle (12, 75);
+	\filldraw[blue!70, opacity=.2] (9, 75) rectangle (12, 83);
+	
+	%	\node[anchor=east] at (9,8) {{\tiny 0x00}};
+	%	\node[anchor=east] at (9,16) {{\tiny 0x08}};
+	%	\node[anchor=east] at (9,24) {{\tiny 0x10}};
+	%	\node[anchor=east] at (9,76) {{\tiny 0x4C}};
+	%	\node[anchor=east] at (9,128) {{\tiny 0x78}};
+	
+	% LEA internal struct (116 bytes + 4 bytes padding)
+	\draw (13,8) rectangle ++(3,120);
+	\draw (13,16) -- ++(3,0);
+	\draw (13,24) -- ++(3,0);
+	\draw (13,120) -- ++(3,0);
+	\node[anchor=south, align=center] at (14.5,8) {\textbf{lea\_internal}\\ \textbf{(8+8+512+8=536 bytes)}};
+	\node at (14.5,12) {\texttt{size\_t block\_size}};
+	\node at (14.5,20) {\texttt{size\_t key\_len}};
+	\node[align=center] at (14.5,64) {\texttt{u32 round\_keys[128]} \\ (512 bytes)};
+	\node at (14.5,124) {\texttt{int nr}\; (4 bytes)};
+	
+	\filldraw[teal!70, opacity=.2] (13, 8) rectangle (16, 16);
+	\filldraw[orange!70, opacity=.2] (13, 16) rectangle (16, 24);
+	\filldraw[red!70, opacity=.2] (13, 24) rectangle (16, 120);
+	\filldraw[blue!70, opacity=.2] (13, 120) rectangle (16, 128);
+	
+	%	\node[anchor=east] at (13,8) {{\tiny 0x00}};
+	%	\node[anchor=east] at (13,16) {{\tiny 0x08}};
+	%	\node[anchor=east] at (13,24) {{\tiny 0x10}};
+	%	\node[anchor=east] at (13,112) {{\tiny 0x70}};
+	%	\node[anchor=east] at (13,128) {{\tiny 0x78}};
+	
+	% Brace to indicate union grouping
+	\draw[decorate,decoration={brace,amplitude=4pt}] (16,130) -- node[below=4pt]{Union members (share same memory)} (5,130);
+	
+	% BlockCipherApi vtable structure (40 bytes)
+	% Place vtable below (starting at y=140 for offset 0)
+	\filldraw[blue!50, opacity=.8] (0, 160) rectangle (3, 168);
+	\draw[thick] (0,160) rectangle ++(3,40);
+	\draw[thick] (0,168) -- ++(3,0);
+	\draw[thick] (0,176) -- ++(3,0);
+	\draw[thick] (0,184) -- ++(3,0);
+	\draw[thick] (0,192) -- ++(3,0);
+	\node[anchor=south,align=center] at (1.5,160) {\textbf{BlockCipherApi (vtable)}\\ \textbf{8$\times$5=40 bytes}};
+	\node at (1.5,164) {\texttt{const char* name}};
+	\node at (1.5,172) {\texttt{int*}};
+	\node at (1.5,180) {\texttt{void*}};
+	\node at (1.5,188) {\texttt{void*}};
+	\node at (1.5,196) {\texttt{void*}};
+	%	\node[anchor=east] at (0,160) {{\tiny 0x00}};
+	%	\node[anchor=east] at (0,168) {{\tiny 0x08}};
+	%	\node[anchor=east] at (0,176) {{\tiny 0x10}};
+	%	\node[anchor=east] at (0,184) {{\tiny 0x18}};
+	%	\node[anchor=east] at (0,192) {{\tiny 0x20}};
+	%	\node[anchor=east] at (0,190) {{\tiny 0x28}};
+	
+	% Arrows: BlockCipherContext.api -> vtable, and vtable function ptrs -> functions
+	% API pointer arrow (from BCC.api field to vtable)
+	\draw[->, thick] (0,4) -| (-1,4) -- (-1,164) -- ++(1,0);
+	
+	% Function implementation nodes for AES
+	\node[draw, anchor=west, fill=magenta!10] (fn_init)        at (3.5,172) {\texttt{int init(BlockCipherContext* ctx, size\_t block\_size, const u8* key, size\_t key\_len);}};
+	\node[draw, anchor=west, fill=green!10] (fn_encrypt)     at (3.5,180) {\texttt{encrypt(BlockCipherContext* ctx, const u8* pt, u8* ct);}};
+	\node[draw, anchor=west, fill=lime!10] (fn_decrypt)     at (3.5,188) {\texttt{decrypt(BlockCipherContext* ctx, const u8* ct, u8* pt);}};
+	\node[draw, anchor=west, fill=cyan!10] (fn_dispose)     at (3.5,196) {\texttt{dispose(BlockCipherContext* ctx);}};
+	
+	\draw[->] (3,172) -- (fn_init.west);
+	\draw[->] (3,180) -- (fn_encrypt.west);
+	\draw[->] (3,188) -- (fn_decrypt.west);
+	\draw[->] (3,196) -- (fn_dispose.west);
+\end{tikzpicture}
+\end{figure}
+\begin{figure}[h!]\centering
+	\includegraphics[scale=1]{memory_layout/BlockCipherApi.pdf}
+\end{figure}
 
 \newpage
 \input{block_cipher/aes}
