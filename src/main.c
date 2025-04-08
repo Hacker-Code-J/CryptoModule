@@ -1,7 +1,7 @@
 /* File: src/main.c */
 #include "../include/api.h"
-#include "../include/utility.h"
-#include "../include/kat_verifier.h"
+#include "cryptomodule_utils.h"
+#include "../include/cryptomodule_test.h"
 
 int main(void) {
 

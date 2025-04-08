@@ -130,10 +130,10 @@ int aes_enc_key_expansion(AesInternal* st, const u8* in, u32* out) {
         out[i] = out[i - n] ^ temp;
     }
 
-    for (i = 0; i < st->key_len; i++) {
-        printf("%08x:", out[i]);
-        if (i % 4 == 3) printf("\n");
-    }
+    // for (i = 0; i < st->key_len; i++) {
+    //     printf("%08x:", out[i]);
+    //     if (i % 4 == 3) printf("\n");
+    // }
 
     return -1;
 }

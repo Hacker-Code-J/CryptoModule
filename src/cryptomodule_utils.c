@@ -1,6 +1,6 @@
 /* File: src/utility */
 
-#include "../include/utility.h"
+#include "../include/cryptomodule_utils.h"
 
 void stringToByteArray(const char* str, u8* byteArray) {
     size_t length = strlen(str);

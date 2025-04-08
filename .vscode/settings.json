@@ -69,7 +69,11 @@
     "string_view": "c",
     "initializer_list": "c",
     "utility": "c",
-    "kat_verifier.h": "c"
+    "kat_verifier.h": "c",
+    "cryptomodule_test.h": "c",
+    "cryptomodule_utils.h": "c",
+    "stddef.h": "c",
+    "stdio.h": "c"
   },
   "files.exclude": {
     "**/*.vo": true,

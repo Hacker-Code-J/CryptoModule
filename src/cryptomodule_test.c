@@ -1,9 +1,44 @@
 /* File: src/kat_verifier.c */
 
-#include "../include/kat_verifier.h"
-#include "../include/utility.h"
+#include "../include/cryptomodule_test.h"
+#include "../include/cryptomodule_utils.h"
 #include "../include/block_cipher/block_cipher.h"
 #include "../include/block_cipher/block_cipher_aes.h"
+
+void print_TestData(const TestData* data) {
+    if (data == NULL) {
+        printf("TestData is NULL\n");
+        return;
+    }
+    printf("Key Length: %zu\n", data->key_len);
+    // printf("IV Length: %zu\n", data->iv_len);
+    printf("Plaintext Length: %zu\n", data->pt_len);
+    printf("Ciphertext Length: %zu\n", data->ct_len);
+
+    printf("Key: ");
+    for (size_t i = 0; i < data->key_len; i++) {
+        printf("%08X ", data->key[i]);
+    }
+    printf("\n");
+
+    // printf("IV: ");
+    // for (size_t i = 0; i < data->iv_len; i++) {
+    //     printf("%08X ", data->iv[i]);
+    // }
+    // printf("\n");
+
+    printf("Plaintext: ");
+    for (size_t i = 0; i < data->pt_len; i++) {
+        printf("%08X ", data->pt[i]);
+    }
+    printf("\n");
+
+    printf("Ciphertext: ");
+    for (size_t i = 0; i < data->ct_len; i++) {
+        printf("%08X ", data->ct[i]);
+    }
+    printf("\n");
+}
 
 void progress_bar(int current, int total) {
     int width = 50; // Width of the progress bar
@@ -35,33 +70,48 @@ void free_TestData(TestData* data) {
 }
 
 void parse_hexline(u32* dst, const char* src, size_t length) {
-    size_t i = 0;
-    char* endptr;
-    char* token = strtok((char*)src, " ");
-    while (token != NULL && i < length) {
-        dst[i++] = (u32)strtoul(token, &endptr, 16);
-        if (*endptr != '\0' && *endptr != '\n') {
-            fprintf(stderr, "Error parsing hex string: %s\n", token);
-            break;
+    for (size_t i = 0; i < length; i++) {
+        u32 value = 0;
+        if (sscanf(src + i * 8, "%08X", &value) != 1) {
+            dst[i] = 0; // Default value if parsing fails
+            // fprintf(stderr, "Error parsing hex string: %s\n", src + i * 8);
+            // break;
+        } else {
+            dst[i] = value;
         }
-        token = strtok(NULL, " ");
     }
+
+    // size_t i = 0;
+    // char* endptr;
+    // char* token = strtok((char*)src, " ");
+    // while (token != NULL && i < length) {
+    //     dst[i++] = (u32)strtoul(token, &endptr, 16);
+    //     if (*endptr != '\0' && *endptr != '\n') {
+    //         fprintf(stderr, "Error parsing hex string: %s\n", token);
+    //         break;
+    //     }
+    //     token = strtok(NULL, " ");
+    // }
 }
 
 size_t word_length(const char* string) {
-    size_t length = 0;
-    while (string[length] != '\0' && string[length] != '\n') {
-        length++;
-    }
-    return length;
+    size_t string_length = strlen(string);
+    size_t word_length = string_length / 8; // 0x00 = 1 word
+    // if (string_length % 8 != 0) {
+    //     fprintf(stderr, "Error: Invalid word length in string: %s\n", string);
+    //     return 0;
+    // }
+    return word_length;
 }
 
 size_t byte_length(const char* string) {
-    size_t length = 0;
-    while (string[length] != '\0' && string[length] != '\n') {
-        length++;
+    size_t string_length = strlen(string);
+    size_t byte_length = string_length / 2; // 0x00 = 1 byte
+    if (string_length % 2 != 0) {
+        fprintf(stderr, "Error: Invalid byte length in string: %s\n", string);
+        return 0;
     }
-    return length / 2; // Each byte is represented by two hex characters
+    return byte_length;
 }
 
 bool read_TestData(FILE* fp, TestData* data) {
@@ -106,7 +156,7 @@ bool read_TestData(FILE* fp, TestData* data) {
 
 void write_TestData(FILE* fp, const u32* data, size_t length) {
     for (size_t i = 0; i < length; i++) {
-        fprintf(fp, "%08X ", data[i]);
+        fprintf(fp, "%08X", data[i]);
     }
     fprintf(fp, "\n");
 }
@@ -182,7 +232,30 @@ void create_BlockCipher_KAT_RspFile(const char* filename_req, const char* filena
     char* line;
     size_t bufsize = MAX_LINE_LENGTH;
     int is_first_key = 1;
-    size_t data_len = 0;
+
+    // Read the request file and create the response file
+    printf("[RSP] Creating response file: %s\n", filename_rsp);
+    fp_req = fopen(filename_req, "r");
+    if (fp_req == NULL) {
+        fprintf(stderr, "[RSP] Error opening file: %s\n", filename_req);
+        return;
+    }
+    // Open the response file for writing
+    fp_rsp = fopen(filename_rsp, "w");
+    if (fp_rsp == NULL) {
+        fprintf(stderr, "[RSP] Error opening file: %s\n", filename_rsp);
+        fclose(fp_req);
+        return;
+    }
+
+    // Allocate initial buffer for line
+    line = (char*)calloc(bufsize, sizeof(char));
+    if (line == NULL) {
+        fprintf(stderr, "Memory allocation error\n");
+        fclose(fp_req);
+        fclose(fp_rsp);
+        return;
+    }
 
     TestData* data = (TestData*)malloc(sizeof(TestData));
     if (data == NULL) {
@@ -191,36 +264,14 @@ void create_BlockCipher_KAT_RspFile(const char* filename_req, const char* filena
     }
     memset(data, 0, sizeof(TestData));
 
-    printf("[RSP] Creating response file: %s\n", filename_rsp);
-    fp_req = fopen(filename_req, "r");
-    if (fp_req == NULL) {
-        fprintf(stderr, "[RSP] Error opening file: %s\n", filename_req);
-        free(data);
-        return;
-    }
-    fp_rsp = fopen(filename_rsp, "w");
-    if (fp_rsp == NULL) {
-        fprintf(stderr, "[RSP] Error opening file: %s\n", filename_rsp);
-        fclose(fp_req);
-        free(data);
-        return;
-    }
-    line = (char*)malloc(bufsize * sizeof(char));
-    if (line == NULL) {
-        fprintf(stderr, "Memory allocation error\n");
-        fclose(fp_req);
-        fclose(fp_rsp);
-        free(data);
-        return;
-    }
-
+    // Read the request file line by line and write the response file
     while(fgets(line, bufsize, fp_req)) {
         if (strncmp(line, "KEY =", 5) == 0) {
             if (!is_first_key) {
                 fprintf(fp_rsp, "\n");
             } is_first_key = 0;
-            size_t key_len = byte_length(line + 6);
-            data->key = (u8*)malloc(key_len * sizeof(u8));
+            data->key_len = word_length(line + 6);
+            data->key = (u32*)malloc(data->key_len * sizeof(u32));
             if (data->key == NULL) {
                 fprintf(stderr, "Memory allocation error\n");
                 free(line);
@@ -229,11 +280,17 @@ void create_BlockCipher_KAT_RspFile(const char* filename_req, const char* filena
                 free(data);
                 return;
             }
-            parse_hexline(data->key, line + 6, key_len);
+            parse_hexline(data->key, line + 6, data->key_len);
+            // printf("Key: ");
+            // for (int i = 0; i < data->key_len; i++) {
+            //     printf("%08X", data->key[i]);
+            // } puts("");
+            // printf("%s", line + 6);
             fputs(line, fp_rsp);
         } else if (strncmp(line, "PT =", 4) == 0) {
-            data_len = byte_length(line + 5);
-            data->pt = (u8*)malloc(data_len * sizeof(u8));
+            data->pt_len = word_length(line + 5);
+            data->ct_len = word_length(line + 5);
+            data->pt = (u32*)malloc(data->pt_len * sizeof(u32));
             if (data->pt == NULL) {
                 fprintf(stderr, "Memory allocation error\n");
                 free(line);
@@ -242,10 +299,15 @@ void create_BlockCipher_KAT_RspFile(const char* filename_req, const char* filena
                 free(data);
                 return;
             }
-            parse_hexline(data->pt, line + 5, data_len);
+            parse_hexline(data->pt, line + 5, data->pt_len);
+            // printf("PT: ");
+            // for (int i = 0; i < data->pt_len; i++) {
+            //     printf("%08X", data->pt[i]);
+            // } puts("");
+            // printf("%s", line + 5);
             fputs(line, fp_rsp);
         } else {
-            data->ct = (u8*)malloc(data_len * sizeof(u8));
+            data->ct = (u32*)malloc(data->ct_len * sizeof(u32));
             if (data->ct == NULL) {
                 fprintf(stderr, "Memory allocation error\n");
                 free(line);
@@ -255,35 +317,79 @@ void create_BlockCipher_KAT_RspFile(const char* filename_req, const char* filena
                 return;
             }
             fprintf(fp_rsp, "CT = ");
-            cryptomodule_status_t rc = cryptomodule_init();
+
             const BlockCipherApi* aes_api = get_aes_api();
-            BlockCipherContext ctx; clear_ctx(&ctx);
-            if (aes_api->init(&ctx, 16, data->key, 16) != 0) {
-                printf("AES init failed (maybe invalid block/key size)\n");
-                return 1;
+            if (!aes_api) {
+                fprintf(stderr, "No AES API available.\n");
+                free(line);
+                fclose(fp_req);
+                fclose(fp_rsp);
+                free(data);
+                return;
             }
-            aes_api->encrypt_block(&ctx, data->pt, data->ct);
-            write_TestData(fp_rsp, data->ct, data_len);
+
+            BlockCipherContext ctx;
+            clear_ctx(&ctx);
+
+            if (aes_api->init(&ctx, data->key_len * sizeof(u32), (u8*)data->key, data->key_len * sizeof(u32)) != 0) {
+                fprintf(stderr, "AES init failed (maybe invalid block/key size)\n");
+                free(line);
+                fclose(fp_req);
+                fclose(fp_rsp);
+                free_TestData(data);
+                free(data);
+                return;
+            }
+
+            // Ensure ciphertext length matches the block size
+            if (data->ct_len != data->pt_len) {
+                data->ct_len = data->pt_len;
+            }
+
+            if (data->ct == NULL) {
+                data->ct = (u32*)malloc(data->ct_len * sizeof(u32));
+                if (data->ct == NULL) {
+                    fprintf(stderr, "Memory allocation error for ciphertext buffer\n");
+                    free(line);
+                    fclose(fp_req);
+                    fclose(fp_rsp);
+                    free(data);
+                    return;
+                }
+            }
+            aes_api->encrypt_block(&ctx, (u8*)data->pt, (u8*)data->ct);
+
+            for (size_t i = 0; i < data->ct_len; i++) {
+                fprintf(fp_rsp, "%08X", data->ct[i]);
+            }
             fprintf(fp_rsp, "\n");
-            if (aes_api->dispose) aes_api->dispose(&ctx);
-            cryptomodule_cleanup();
+
+            if (aes_api->dispose) {
+                aes_api->dispose(&ctx);
+            }
+
         }
     }
+
+    print_TestData(data);
+    free(data);
 }
 
 void KAT_TEST_BLOCKCIPHER_AES(void) {
-    const char* KAT_TEST_BC_AES_PATH = "../testvectors/block_cipher_tv/aes/";
+    // Current working directory: ../CryptoModule
+    const char* file_path = "./testvectors/block_cipher_tv/aes/";
     char filename_fax[100];
     char filename_req[100];
     char filename_rsp[100];
 
-    snprintf(filename_fax, sizeof(filename_fax), "%s%s", KAT_TEST_BC_AES_PATH, "AES128(ECB)KAT.fax");
-    snprintf(filename_req, sizeof(filename_req), "%s%s", KAT_TEST_BC_AES_PATH, "AES128(ECB)KAT.req");
-    snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", KAT_TEST_BC_AES_PATH, "AES128(ECB)KAT.rsp");
+    snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "AES128(ECB)KAT.tax");
+    snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "AES128(ECB)KAT.req");
+    snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "AES128(ECB)KAT.rsp");
+
 
     create_BlockCipher_KAT_ReqFile(filename_fax, filename_req);
     create_BlockCipher_KAT_RspFile(filename_req, filename_rsp);
-    
+
     printf("\n START: KAT_TEST_BLOCKCIPHER_AES\n");
     printf("  Request file: %s\n", filename_req);
     printf("  Response file: %s\n", filename_rsp);
@@ -302,119 +408,62 @@ void KAT_TEST_BLOCKCIPHER_AES(void) {
     }
 
     TestData* data_fax = (TestData*)malloc(sizeof(TestData));
-    if (data_fax == NULL) {
-        fprintf(stderr, "Memory allocation error\n");
-        fclose(fp_fax);
-        fclose(fp_rsp);
-        return;
-    }
-    memset(data_fax, 0, sizeof(TestData));
     TestData* data_rsp = (TestData*)malloc(sizeof(TestData));
-    if (data_rsp == NULL) {
+    
+    if (data_fax == NULL || data_rsp == NULL) {
         fprintf(stderr, "Memory allocation error\n");
+        if (data_fax) free(data_fax);
+        if (data_rsp) free(data_rsp);
         fclose(fp_fax);
         fclose(fp_rsp);
-        free(data_fax);
         return;
     }
+
+    memset(data_fax, 0, sizeof(TestData));
     memset(data_rsp, 0, sizeof(TestData));
     
-    
-    int result = 1;
-    int i = 1;
+    bool result = true;
+    int i = 0;
     int total_tests = 284;
     int passed_tests = 0;
 
+    printf("\nVerifying test vectors...\n");
+
     while (i < total_tests) {
         memset(data_fax, 0, sizeof(TestData));
-        if (!read_TestData(fp_fax, data_fax)) {
-            fprintf(stderr, "Error reading test data from file: %s\n", filename_fax);
-            break;
-        }
         memset(data_rsp, 0, sizeof(TestData));
-        if (!read_TestData(fp_rsp, data_rsp)) {
-            fprintf(stderr, "Error reading test data from file: %s\n", filename_rsp);
-            break;
-        }
-        if (data_fax->key_len != data_rsp->key_len || 
-            data_fax->iv_len != data_rsp->iv_len || 
-            data_fax->pt_len != data_rsp->pt_len || 
-            data_fax->ct_len != data_rsp->ct_len) {
-            fprintf(stderr, "Test data length mismatch\n");
-            break;
-        }
-        if (data_fax->key_len != data_rsp->key_len || 
-            data_fax->iv_len != data_rsp->iv_len || 
-            data_fax->pt_len != data_rsp->pt_len || 
-            data_fax->ct_len != data_rsp->ct_len) {
-            fprintf(stderr, "Test data length mismatch\n");
-            break;
-        }
-        if (data_fax->key_len != data_rsp->key_len || 
-            data_fax->iv_len != data_rsp->iv_len || 
-            data_fax->pt_len != data_rsp->pt_len || 
-            data_fax->ct_len != data_rsp->ct_len) {
-            fprintf(stderr, "Test data length mismatch\n");
-            break;
-        }
-        if (data_fax->key_len != data_rsp->key_len || 
-            data_fax->iv_len != data_rsp->iv_len || 
-            data_fax->pt_len != data_rsp->pt_len || 
-            data_fax->ct_len != data_rsp->ct_len) {
-            fprintf(stderr, "Test data length mismatch\n");
-            break;
-        }
-        if (data_fax->key_len != data_rsp->key_len || 
-            data_fax->iv_len != data_rsp->iv_len || 
-            data_fax->pt_len != data_rsp->pt_len || 
-            data_fax->ct_len != data_rsp->ct_len) {
-            fprintf(stderr, "Test data length mismatch\n");
-            break;
-        }
-        if (data_fax->key_len != data_rsp->key_len || 
-            data_fax->iv_len != data_rsp->iv_len || 
-            data_fax->pt_len != data_rsp->pt_len || 
-            data_fax->ct_len != data_rsp->ct_len) {
-            fprintf(stderr, "Test data length mismatch\n");
-            break;
-        }
-        if (data_fax->key_len != data_rsp->key_len || 
-            data_fax->iv_len != data_rsp->iv_len || 
-            data_fax->pt_len != data_rsp->pt_len || 
-            data_fax->ct_len != data_rsp->ct_len) {
-            fprintf(stderr, "Test data length mismatch\n");
-            break;
-        }
-        if (data_fax->key_len != data_rsp->key_len || 
-            data_fax->iv_len != data_rsp->iv_len || 
-            data_fax->pt_len != data_rsp->pt_len || 
-            data_fax->ct_len != data_rsp->ct_len) {
-            fprintf(stderr, "Test data length mismatch\n");
+
+        if (!read_TestData(fp_fax, data_fax) || !read_TestData(fp_rsp, data_rsp)) {
+            fprintf(stderr, "Error reading test data at vector %d\n", i + 1);
+            result = false;
             break;
         }
 
+        if (!compare_TestData(data_fax, data_rsp)) {
+            fprintf(stderr, "\nTest vector %d failed verification\n", i + 1);
+            result = false;
+            break;
+        }
+
+        free_TestData(data_fax);
+        free_TestData(data_rsp);
         passed_tests++;
-        progress_bar(i, total_tests);
         i++;
+        
+        progress_bar(i, total_tests);
+        fflush(stdout);
     }
 
-    if (result) {
-        printf("\nAll tests passed!\n");
-    } else {
-        printf("\nSome tests failed.\n");
-    }
+    printf("\n\nTest Results:\n");
+    printf("Total vectors: %d\n", total_tests);
+    printf("Passed vectors: %d\n", passed_tests);
+    printf("Result: %s\n\n", result ? "PASSED" : "FAILED");
+
+    // Cleanup
+    free_TestData(data_fax);
+    free_TestData(data_rsp);
+    free(data_fax);
+    free(data_rsp);
     fclose(fp_fax);
     fclose(fp_rsp);
-    free(data_fax->key);
-    free(data_fax->iv);
-    free(data_fax->pt);
-    free(data_fax->ct);
-    free(data_fax);
-    free(data_rsp->key);
-    free(data_rsp->iv);
-    free(data_rsp->pt);
-    free(data_rsp->ct);
-    free(data_rsp);
-    printf(" END: KAT_TEST_BLOCKCIPHER_AES\n");
-    printf("Passed tests: %d/%d\n", passed_tests, total_tests);
 }

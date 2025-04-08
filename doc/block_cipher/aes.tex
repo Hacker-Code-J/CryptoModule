@@ -14,6 +14,82 @@
 	\end{tabular*}
 \end{table}
 \newpage
+\begin{tikzpicture}[>=stealth, node distance=0cm, scale=.9]
+	% Set font for nodes to a small monospace for clarity
+	\tikzstyle{every node}=[font=\footnotesize\ttfamily]
+	
+	% Dimensions and coordinates (assuming 64-bit, pointer = 8 bytes)
+	\def\ptrSize{0.5}    % height for an 8-byte field (in cm)
+	\def\ctxWidth{5.0}   % width of the BlockCipherContext struct box (in cm)
+	\def\apiWidth{4.0}   % width of the BlockCipherApi struct box (in cm)
+	
+	% BlockCipherContext structure box
+	\coordinate (ctxOrigin) at (0,0);                            % top-left corner of BlockCipherContext
+	\draw[draw, thick] (ctxOrigin) rectangle ++(\ctxWidth,-\ptrSize)
+	node[midway] {BlockCipherApi *api};                   % api pointer field
+	\draw[draw, thick] (0,-\ptrSize) rectangle ++(\ctxWidth,-5.0) 
+	node[midway] {uint8\_t internal\_data[256]};             % internal_data array field (256 bytes)
+	\draw[thick] (ctxOrigin) -- ++(0, -5.5);                     % left boundary line for context (extend to full height)
+	\draw[thick] (\ctxWidth, 0) -- ++(0, -5.5);                  % right boundary line for context
+	
+	% Offset markers for BlockCipherContext
+	\draw[thick] ($(ctxOrigin) + (0,0)$) -- ++(-3mm,0) node[left] {0x00};
+	\draw[thick] ($(ctxOrigin) + (0,-\ptrSize)$) -- ++(-3mm,0) node[left] {0x08};
+	\draw[thick] ($(ctxOrigin) + (0,-5.5)$) -- ++(-3mm,0) node[left] {0x108};
+	\draw[decorate, decoration={brace, amplitude=4pt}, thick]
+	(\ctxWidth + 0.1, -\ptrSize) -- node[right=4pt]{256 bytes} (\ctxWidth + 0.1, -5.5);
+	
+	% Label the struct
+	\node[above=2mm of ctxOrigin, anchor=west, font=\normalsize\bfseries] {BlockCipherContext (in memory)};
+	
+	% BlockCipherApi structure box (positioned to the right of context)
+	\coordinate (apiOrigin) at (\ctxWidth + 3.0, 0);            % top-left corner of BlockCipherApi (some gap to the right)
+	% Draw each field of BlockCipherApi as a rectangle
+	\draw[draw, thick] (apiOrigin) rectangle ++(\apiWidth,-\ptrSize)  
+	node[midway] {const char *name};
+	\draw[draw, thick] ($(apiOrigin)+(0,-\ptrSize)$) rectangle ++(\apiWidth,-\ptrSize)  
+	node[midway] {init};
+	\draw[draw, thick] ($(apiOrigin)+(0,-2*\ptrSize)$) rectangle ++(\apiWidth,-\ptrSize)  
+	node[midway] {encrypt\_block};
+	\draw[draw, thick] ($(apiOrigin)+(0,-3*\ptrSize)$) rectangle ++(\apiWidth,-\ptrSize)  
+	node[midway] {decrypt\_block};
+	\draw[draw, thick] ($(apiOrigin)+(0,-4*\ptrSize)$) rectangle ++(\apiWidth,-\ptrSize)  
+	node[midway] {dispose};
+	\draw[thick] (apiOrigin) -- ++(0, -5*\ptrSize);              % left boundary line for API struct
+	\draw[thick] ($(apiOrigin)+(\apiWidth,0)$) -- ++(0, -5*\ptrSize); % right boundary line for API struct
+	
+	% Offset markers for BlockCipherApi
+	\draw[thick] ($(apiOrigin) + (0,0)$) -- ++(-3mm,0) node[left] {0x00};
+	\draw[thick] ($(apiOrigin) + (0,-\ptrSize)$) -- ++(-3mm,0) node[left] {0x08};
+	\draw[thick] ($(apiOrigin) + (0,-2*\ptrSize)$) -- ++(-3mm,0) node[left] {0x10};
+	\draw[thick] ($(apiOrigin) + (0,-3*\ptrSize)$) -- ++(-3mm,0) node[left] {0x18};
+	\draw[thick] ($(apiOrigin) + (0,-4*\ptrSize)$) -- ++(-3mm,0) node[left] {0x20};
+	\draw[thick] ($(apiOrigin) + (0,-5*\ptrSize)$) -- ++(-3mm,0) node[left] {0x28};
+	
+	% Label the struct
+	\node[above=2mm of apiOrigin, anchor=west, font=\normalsize\bfseries] {BlockCipherApi (in memory)};
+	
+	% Pointer arrow from BlockCipherContext.api to BlockCipherApi struct
+	\coordinate (ctxApiPtr) at ($(ctxOrigin) + (\ctxWidth/2, -\ptrSize/2)$);   % center of ctx.api field
+	\coordinate (apiNameLeft) at ($(apiOrigin) + (0, -\ptrSize/2)$);           % left edge midpoint of API.name field
+	\draw[->, thick] (ctxApiPtr) -- (apiNameLeft);
+	
+	% Pointer arrow from BlockCipherApi.name to an example name string
+	\coordinate (apiNameRight) at ($(apiOrigin) + (\apiWidth, -\ptrSize/2)$);
+	\draw[->, thick] (apiNameRight) -- ++(1.5, 0) node[right] {“AES-128”};
+	
+	% Pointer arrows from function pointers to function code (illustrative)
+	\foreach \i/\name in {1/init(), 2/encrypt\_block(), 3/decrypt\_block(), 4/dispose()} {%
+		\coordinate (fieldRight\i) at ($(apiOrigin) + (\apiWidth, -\i*\ptrSize + \ptrSize/2)$);
+		\draw[->, thick] (fieldRight\i) -- ++(1.2, 0) node[right] {\name \,function};
+	}
+	
+	% Legend / notes
+	\node[anchor=west] at ($(ctxOrigin) + (0,-6.2)$) 
+	{\textit{Note: Arrows show pointer targets. “init() function” etc. indicate the actual code for those function pointers.}};
+\end{tikzpicture}
+
+
 \begin{lstlisting}[style=cstyle, caption={include/block\_cipher/block\_cipher.h}, captionpos=t]
 /* Forward declaration for the context. */
 typedef struct BlockCipherContext BlockCipherContext;
