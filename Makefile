@@ -1,11 +1,16 @@
 ###############################################################################
-# Professional Makefile for a small CryptoModule example
+# Makefile for a CryptoModule
 #
 # Targets:
 #   build   : Compile + link everything into an executable
 #   run     : Run the resulting binary
 #   clean   : Remove all build artifacts
 #   rebuild : Clean first, then build
+# 	valgrind: Run the binary under Valgrind for memory checking
+#   asan    : Build with AddressSanitizer enabled and run
+#   gdb     : Build with debugging symbols and launch GDB for in-depth inspection
+#   inspect : Inspect the binary with nm and objdump
+# 	TBA
 ###############################################################################
 
 # --- Project-wide settings ---
@@ -19,17 +24,12 @@ TARGET      := cryptomodule-demo
 OBJ_DIR     := build
 BIN_DIR     := bin
 
-# Source files. Adjust or use wildcards as needed:
-SRCS := \
-  src/main.c \
-  src/block_cipher/block_cipher_aes.c \
-  src/block_cipher/block_cipher_factory.c \
-  src/cryptomodule_core.c \
-  src/cryptomodule_utils.c \
-  src/cryptomodule_test.c \
+# Automatically find all .c files in src (including subdirectories)
+SRCS := $(shell find src -name '*.c')
 
-# Generate a list of object files by mapping .c -> .o in the OBJ_DIR
-OBJS := $(SRCS:%.c=$(OBJ_DIR)/%.o)
+# Generate a list of object files by converting:
+# src/xxx.c  --->  build/xxx.o (preserving the subdirectory structure relative to src)
+OBJS := $(patsubst src/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
 # --- Phony targets (not actual files) ---
 .PHONY: build run clean rebuild all
@@ -44,13 +44,13 @@ build: $(BIN_DIR)/$(TARGET)
 
 # Link step: gather all objects into a single executable
 $(BIN_DIR)/$(TARGET): $(OBJS)
-	@echo "[LINK]  $@"
+	@echo "[LINK] Linking objects to create $@"
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(CFLAGS) $^ -o $@
 
 # Compile step: For each .c -> .o
-$(OBJ_DIR)/%.o: %.c
-	@echo "[CC]    $<"
+$(OBJ_DIR)/%.o: src/%.c
+	@echo "[CC] Compiling $< into $@"
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -58,7 +58,7 @@ $(OBJ_DIR)/%.o: %.c
 # 2) run : run the resulting binary
 ###############################################################################
 run: build
-	@echo "[RUN]   $(BIN_DIR)/$(TARGET)"
+	@echo "[RUN] Running $(BIN_DIR)/$(TARGET)"
 	@./$(BIN_DIR)/$(TARGET)
 
 ###############################################################################

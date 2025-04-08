@@ -129,7 +129,7 @@ bool compare_TestData(const TestData* data1, const TestData* data2) {
     return true;
 }
 
-void create_BlockCipher_AES_ReqFile(const char* filename_fax, const char* filename_req) {
+void create_BlockCipher_KAT_ReqFile(const char* filename_fax, const char* filename_req) {
     FILE *fp_fax, *fp_req;
     char* line;
     size_t bufsize = MAX_LINE_LENGTH;
@@ -177,7 +177,7 @@ void create_BlockCipher_AES_ReqFile(const char* filename_fax, const char* filena
     printf("Created request file: %s\n", filename_req);
 }
 
-void create_BlockCipher_AES_RspFile(const char* filename_req, const char* filename_rsp) {
+void create_BlockCipher_KAT_RspFile(const char* filename_req, const char* filename_rsp) {
     FILE *fp_req, *fp_rsp;
     char* line;
     size_t bufsize = MAX_LINE_LENGTH;
@@ -281,15 +281,13 @@ void KAT_TEST_BLOCKCIPHER_AES(void) {
     snprintf(filename_req, sizeof(filename_req), "%s%s", KAT_TEST_BC_AES_PATH, "AES128(ECB)KAT.req");
     snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", KAT_TEST_BC_AES_PATH, "AES128(ECB)KAT.rsp");
 
-    create_BlockCipher_AES_ReqFile(filename_fax, filename_req);
-    create_BlockCipher_AES_RspFile(filename_req, filename_rsp);
+    create_BlockCipher_KAT_ReqFile(filename_fax, filename_req);
+    create_BlockCipher_KAT_RspFile(filename_req, filename_rsp);
     
     printf("\n START: KAT_TEST_BLOCKCIPHER_AES\n");
-    // printf("  AES API: %s\n", aes_api->name);
     printf("  Request file: %s\n", filename_req);
     printf("  Response file: %s\n", filename_rsp);
     printf("  Test data file: %s\n", filename_fax);
-    
     
     FILE* fp_fax = fopen(filename_fax, "r");
     if (fp_fax == NULL) {

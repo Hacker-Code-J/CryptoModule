@@ -4,6 +4,9 @@
 #include "../include/kat_verifier.h"
 
 int main(void) {
+
+    KAT_TEST_BLOCKCIPHER_AES();
+
     // /* 1) Initialize entire cryptomodule. (optional) */
     // cryptomodule_status_t rc = cryptomodule_init();
     // if (rc != CRYPTOMODULE_OK) {
@@ -124,9 +127,6 @@ int main(void) {
     // if (aes_api->dispose) aes_api->dispose(&ctx);
 
     // cryptomodule_cleanup();
-
-
-    KAT_TEST_BLOCKCIPHER_AES();
 
     return 0;
 }
