@@ -13,6 +13,115 @@
 		\bottomrule[1.2pt]
 	\end{tabular*}
 \end{table}
+
+\begin{tikzpicture}[x=1cm, y=-0.07cm, font=\footnotesize, draw=black, >=Stealth, scale=.8]
+	% BlockCipherContext outline
+	\draw[thick] (0,0) rectangle ++(3,128);  % 128 bytes tall, 3 cm wide
+	\draw[thick] (0,8) -- ++(3,0);          % line separating api vs internal_data at 8 bytes
+	
+	% BlockCipherContext labels and offsets
+	\node[anchor=south] at (1.5,0) {\textbf{BlockCipherContext (128 bytes)}};
+	\node at (1.5,4) {BlockCipherApi* \textit{api} \\ (8 bytes)};
+	\node at (1.5,68) {CipherInternal \textit{internal\_data} \\ (union, 120 bytes)};
+	
+	\node[anchor=east] at (0,0) {{\tiny 0x00}};   % top address
+	\node[anchor=east] at (0,8) {{\tiny 0x08}};
+	\node[anchor=east] at (0,128) {{\tiny 0x80}};
+	
+	% Expand union internal_data: AES, ARIA, LEA internal structures side-by-side
+	% Base alignment line for union (offset 0x08 in context)
+	\draw[densely dashed] (3,8) -- ++(14,0) node[anchor=west]{\tiny Union base (0x08)};
+	
+	% AES internal struct (80 bytes used out of 120)
+	\draw (5,8) rectangle ++(3,120);       % union size tall (for visual alignment)
+	\draw (5,16) -- ++(3,0);
+	\draw (5,24) -- ++(3,0);
+	\draw (5,76) -- ++(3,0);
+	\node[anchor=south] at (6.5,8) {\textbf{aes\_internal (80 bytes)}};
+	\node at (6.5,12) {size\_t \textit{block\_size} \\ (8 bytes)};
+	\node at (6.5,20) {size\_t \textit{key\_len} \\ (8 bytes)};
+	\node at (6.5,50) {u8 \textit{round\_keys[60]} \\ (60 bytes)};
+	\node at (6.5,80) {int \textit{nr} \\ (4 bytes)};
+	\node[color=gray] at (6.5,100) {{\footnotesize (unused 40 bytes)}};
+	\node[anchor=east] at (5,8) {{\tiny 0x00}};
+	\node[anchor=east] at (5,16) {{\tiny 0x08}};
+	\node[anchor=east] at (5,24) {{\tiny 0x10}};
+	\node[anchor=east] at (5,76) {{\tiny 0x4C}};
+	\node[anchor=east] at (5,128) {{\tiny 0x78}};  % union full size
+	
+	% ARIA internal struct (same as AES, 80 bytes)
+	\draw (9,8) rectangle ++(3,120);
+	\draw (9,16) -- ++(3,0);
+	\draw (9,24) -- ++(3,0);
+	\draw (9,76) -- ++(3,0);
+	\node[anchor=south] at (10.5,8) {\textbf{aria\_internal (80 bytes)}};
+	\node at (10.5,12) {size\_t \textit{block\_size} \\ (8 bytes)};
+	\node at (10.5,20) {size\_t \textit{key\_len} \\ (8 bytes)};
+	\node at (10.5,50) {u8 \textit{round\_keys[60]} \\ (60 bytes)};
+	\node at (10.5,80) {int \textit{nr} \\ (4 bytes)};
+	\node[color=gray] at (10.5,100) {{\footnotesize (unused 40 bytes)}};
+	\node[anchor=east] at (9,8) {{\tiny 0x00}};
+	\node[anchor=east] at (9,16) {{\tiny 0x08}};
+	\node[anchor=east] at (9,24) {{\tiny 0x10}};
+	\node[anchor=east] at (9,76) {{\tiny 0x4C}};
+	\node[anchor=east] at (9,128) {{\tiny 0x78}};
+	
+	% LEA internal struct (116 bytes + 4 bytes padding)
+	\draw (13,8) rectangle ++(3,120);
+	\draw (13,16) -- ++(3,0);
+	\draw (13,24) -- ++(3,0);
+	\draw (13,112) -- ++(3,0);
+	\node[anchor=south] at (14.5,8) {\textbf{lea\_internal (120 bytes)}};
+	\node at (14.5,12) {size\_t \textit{block\_size} \\ (8 bytes)};
+	\node at (14.5,20) {size\_t \textit{key\_len} \\ (8 bytes)};
+	\node at (14.5,60) {u8 \textit{round\_keys[96]} \\ (96 bytes)};
+	\node at (14.5,116) {int \textit{nr} \\ (4 bytes)};
+	\node[color=gray] at (14.5,124) {{\footnotesize (+4B pad)}};
+	\node[anchor=east] at (13,8) {{\tiny 0x00}};
+	\node[anchor=east] at (13,16) {{\tiny 0x08}};
+	\node[anchor=east] at (13,24) {{\tiny 0x10}};
+	\node[anchor=east] at (13,112) {{\tiny 0x70}};
+	\node[anchor=east] at (13,128) {{\tiny 0x78}};
+	
+	% Brace to indicate union grouping
+	\draw[decorate,decoration={brace,amplitude=4pt}] (5,130) -- node[above=4pt]{\small Union members (share same memory)} (16,130);
+	
+	% BlockCipherApi vtable structure (40 bytes)
+	% Place vtable below (starting at y=140 for offset 0)
+	\draw[thick] (0,140) rectangle ++(3,40);
+	\draw[thick] (0,148) -- ++(3,0);
+	\draw[thick] (0,156) -- ++(3,0);
+	\draw[thick] (0,164) -- ++(3,0);
+	\draw[thick] (0,172) -- ++(3,0);
+	\node[anchor=south] at (1.5,140) {\textbf{BlockCipherApi (vtable)}};
+	\node at (1.5,144) {const char* \textit{name} \\ (8 bytes)};
+	\node at (1.5,152) {\textit{init} (func ptr, 8B)};
+	\node at (1.5,160) {\textit{encrypt\_block} (func ptr, 8B)};
+	\node at (1.5,168) {\textit{decrypt\_block} (func ptr, 8B)};
+	\node at (1.5,176) {\textit{dispose} (func ptr, 8B)};
+	\node[anchor=east] at (0,140) {{\tiny 0x00}};
+	\node[anchor=east] at (0,148) {{\tiny 0x08}};
+	\node[anchor=east] at (0,156) {{\tiny 0x10}};
+	\node[anchor=east] at (0,164) {{\tiny 0x18}};
+	\node[anchor=east] at (0,172) {{\tiny 0x20}};
+	\node[anchor=east] at (0,180) {{\tiny 0x28}};
+	
+	% Arrows: BlockCipherContext.api -> vtable, and vtable function ptrs -> functions
+	% API pointer arrow (from BCC.api field to vtable)
+	\draw[->, thick] (0,4) -| (-1,4) |- (-1,140) -| (0,140);
+	
+	% Function implementation nodes for AES
+	\node[draw, anchor=west, fill=gray!10] (fn_init)        at (6,152) {\texttt{aes\_init()}};
+	\node[draw, anchor=west, fill=gray!10] (fn_encrypt)     at (6,160) {\texttt{aes\_encrypt()}};
+	\node[draw, anchor=west, fill=gray!10] (fn_decrypt)     at (6,168) {\texttt{aes\_decrypt()}};
+	\node[draw, anchor=west, fill=gray!10] (fn_dispose)     at (6,176) {\texttt{aes\_dispose()}};
+	
+	\draw[->] (3,152) -- (fn_init.west);
+	\draw[->] (3,160) -- (fn_encrypt.west);
+	\draw[->] (3,168) -- (fn_decrypt.west);
+	\draw[->] (3,176) -- (fn_dispose.west);
+\end{tikzpicture}
+
 \newpage
 \begin{tikzpicture}[>=stealth, node distance=0cm, scale=.9]
 	% Set font for nodes to a small monospace for clarity
@@ -89,6 +198,75 @@
 	{\textit{Note: Arrows show pointer targets. “init() function” etc. indicate the actual code for those function pointers.}};
 \end{tikzpicture}
 
+% TikZ diagram of BlockCipherContext and BlockCipherApi (vtable) memory layout
+% (Assuming 64-bit system: pointers are 8 bytes, hence offsets increment by 0x08)
+\begin{tikzpicture}[font=\footnotesize\ttfamily, >=Stealth, scale=.8]
+	% Define dimensions
+	\def\ptrH{0.3}      % height for one pointer field (represents 8 bytes)
+	\def\halfPtrH{0.15} % half of pointer field height
+	\def\intH{9.6}      % height for 256-byte internal_data field (32 * \ptrH)
+	\def\halfIntH{4.8}  % half of internal_data field height
+	\def\ctxWidth{5}    % width of structure boxes
+	\def\vtWidth{5}
+	\def\funcWidth{5.5} % width of function implementation boxes
+	% X-coordinates for structures
+	\def\ctxX{0}        % BlockCipherContext X position
+	\def\vtX{6.5}       % BlockCipherApi (vtable) X position
+	\def\funcX{13}      % Function implementations X position
+	
+	% BlockCipherContext structure outline
+	\draw (\ctxX, 0) rectangle ({\ctxX + \ctxWidth}, {-(\ptrH + \intH)});
+	\draw (\ctxX, -\ptrH) -- ({\ctxX + \ctxWidth}, -\ptrH);  % divider between fields
+	% BlockCipherContext field labels
+	\node[anchor=west, inner sep=1mm] at (\ctxX, -\halfPtrH) {BlockCipherApi *api};
+	\node[anchor=west, inner sep=1mm] at (\ctxX, {-(\ptrH + \halfIntH)}) {u8 internal\_data[256]};
+	% BlockCipherContext offset labels (left side)
+	\node[anchor=east, fill=white, inner sep=1pt] at (\ctxX, 0) {0x00};
+	\node[anchor=east, fill=white, inner sep=1pt] at (\ctxX, -\ptrH) {0x08};
+	\node[anchor=east, fill=white, inner sep=1pt] at (\ctxX, {-(\ptrH + \intH)}) {0x108};
+	% BlockCipherContext size annotations (right side)
+	\node[anchor=west] at ({\ctxX + \ctxWidth + 1mm}, {-\halfPtrH - 0.05}) {8 bytes};
+	\node[anchor=west] at ({\ctxX + \ctxWidth + 1mm}, {-(\ptrH + \halfIntH)}) {256 bytes};
+	
+	% BlockCipherApi (vtable) structure outline
+	\draw (\vtX, 0) rectangle ({\vtX + \vtWidth}, {-5 * \ptrH});
+	\foreach \i in {1,...,4} { % horizontal lines for each vtable field
+		\draw (\vtX, {-\i * \ptrH}) -- ({\vtX + \vtWidth}, {-\i * \ptrH});
+	}
+	% BlockCipherApi vtable field labels
+	\node[anchor=west, inner sep=1mm] at (\vtX, -\halfPtrH) {const char *name};
+	\node[anchor=west, inner sep=1mm] at (\vtX, {-(1 * \ptrH + \halfPtrH)}) {init (function ptr)};
+	\node[anchor=west, inner sep=1mm] at (\vtX, {-(2 * \ptrH + \halfPtrH)}) {encrypt\_block (function ptr)};
+	\node[anchor=west, inner sep=1mm] at (\vtX, {-(3 * \ptrH + \halfPtrH)}) {decrypt\_block (function ptr)};
+	\node[anchor=west, inner sep=1mm] at (\vtX, {-(4 * \ptrH + \halfPtrH)}) {dispose (function ptr)};
+	% BlockCipherApi vtable offset labels (left side)
+	\node[anchor=east, fill=white, inner sep=1pt] at (\vtX, 0) {0x00};
+	\node[anchor=east, fill=white, inner sep=1pt] at (\vtX, { -1 * \ptrH }) {0x08};
+	\node[anchor=east, fill=white, inner sep=1pt] at (\vtX, { -2 * \ptrH }) {0x10};
+	\node[anchor=east, fill=white, inner sep=1pt] at (\vtX, { -3 * \ptrH }) {0x18};
+	\node[anchor=east, fill=white, inner sep=1pt] at (\vtX, { -4 * \ptrH }) {0x20};
+	\node[anchor=east, fill=white, inner sep=1pt] at (\vtX, { -5 * \ptrH }) {0x28};
+	% Brace to label the vtable structure
+	\draw[decorate, decoration={brace, mirror, amplitude=5pt}] (\vtX, { -5 * \ptrH }) -- (\vtX, 0)
+	node[midway, left=6pt]{BlockCipherApi (vtable)};
+	
+	% AES function implementation blocks
+	\node[draw, minimum width=\funcWidth cm, anchor=west, align=left, inner sep=2mm] (funcInit) 
+	at (\funcX, {-(1 * \ptrH + \halfPtrH)}) {aes\_init function implementation};
+	\node[draw, minimum width=\funcWidth cm, anchor=west, align=left, inner sep=2mm] (funcEnc)  
+	at (\funcX, {-(2 * \ptrH + \halfPtrH)}) {aes\_encrypt function implementation};
+	\node[draw, minimum width=\funcWidth cm, anchor=west, align=left, inner sep=2mm] (funcDec)  
+	at (\funcX, {-(3 * \ptrH + \halfPtrH)}) {aes\_decrypt function implementation};
+	\node[draw, minimum width=\funcWidth cm, anchor=west, align=left, inner sep=2mm] (funcDisp) 
+	at (\funcX, {-(4 * \ptrH + \halfPtrH)}) {aes\_dispose function implementation};
+	
+	% Pointer arrows showing relationships
+	\draw[->] ({\ctxX + \ctxWidth}, {-\halfPtrH}) -- (\vtX, {-\halfPtrH});
+	\draw[->] ({\vtX + \vtWidth}, {-(1 * \ptrH + \halfPtrH)}) -- (funcInit.west);
+	\draw[->] ({\vtX + \vtWidth}, {-(2 * \ptrH + \halfPtrH)}) -- (funcEnc.west);
+	\draw[->] ({\vtX + \vtWidth}, {-(3 * \ptrH + \halfPtrH)}) -- (funcDec.west);
+	\draw[->] ({\vtX + \vtWidth}, {-(4 * \ptrH + \halfPtrH)}) -- (funcDisp.west);
+\end{tikzpicture}
 
 \begin{lstlisting}[style=cstyle, caption={include/block\_cipher/block\_cipher.h}, captionpos=t]
 /* Forward declaration for the context. */

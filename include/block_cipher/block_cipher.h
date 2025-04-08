@@ -52,6 +52,25 @@ typedef struct BlockCipherApi {
 
 } BlockCipherApi;
 
+typedef struct AesInternal {
+    size_t block_size;  /* Typically must be 16 for AES */
+    size_t key_len;     /* 16, 24, or 32 for AES-128/192/256 */
+    u32 round_keys[60]; 
+    /*
+     *    The round keys are derived from the original key using the key expansion algorithm.
+     *    The number of round keys depends on the key length:
+     *    - AES-128: 10 rounds, 11 round keys
+     *    - AES-192: 12 rounds, 13 round keys
+     *    - AES-256: 14 rounds, 15 round keys           T
+     *    The round keys are stored in an array of 32-bit words.
+     *    The size of the array is 4 * (number of rounds + 1).
+     *    For example, for AES-128, the size is 4 * (10 + 1) = 44 words.
+     *    For AES-192, the size is 4 * (12 + 1) = 52 words.
+     *    For AES-256, the size is 4 * (14 + 1) = 60 words.
+    */
+    int nr;             /* e.g., 10 for AES-128, 12, or 14... */
+} AesInternal;
+
 /* 
  * The context object holds internal state. Different ciphers may store differently.
  * The first field must be a pointer to the vtable for the chosen cipher.
@@ -59,7 +78,7 @@ typedef struct BlockCipherApi {
 /* The context structure storing state. */
 struct BlockCipherContext {
     const BlockCipherApi *api;  
-    u8 internal_data[256]; /* space for internal state, e.g., round keys */
+    AesInternal aes_internal; /* AES-specific internal state */
 };
 
 /* For usage:

@@ -84,24 +84,7 @@ const BlockCipherApi* get_aes_api(void) { return &AES_API; }
  *          - AES-192: 12 rounds
  *          - AES-256: 14 rounds
  */
-typedef struct AesInternal {
-    size_t block_size;  /* Typically must be 16 for AES */
-    size_t key_len;     /* 16, 24, or 32 for AES-128/192/256 */
-    u32 round_keys[60]; 
-    /*
-     *    The round keys are derived from the original key using the key expansion algorithm.
-     *    The number of round keys depends on the key length:
-     *    - AES-128: 10 rounds, 11 round keys
-     *    - AES-192: 12 rounds, 13 round keys
-     *    - AES-256: 14 rounds, 15 round keys           T
-     *    The round keys are stored in an array of 32-bit words.
-     *    The size of the array is 4 * (number of rounds + 1).
-     *    For example, for AES-128, the size is 4 * (10 + 1) = 44 words.
-     *    For AES-192, the size is 4 * (12 + 1) = 52 words.
-     *    For AES-256, the size is 4 * (14 + 1) = 60 words.
-    */
-    int nr;             /* e.g., 10 for AES-128, 12, or 14... */
-} AesInternal;
+
 
 /* Forward declarations of static functions. */
 int aes_enc_key_expansion(AesInternal* st, const u8* in, u32* out);   //  AES Encryption Key Expansion
@@ -154,7 +137,10 @@ static int aes_init(BlockCipherContext* ctx,
 
     /* Link the context to the vtable. */
     ctx->api = &AES_API;
-    AesInternal* st = (AesInternal *) ctx->internal_data;
+    AesInternal* st = &ctx->aes_internal;
+    if (!st) {
+        return -1; /* internal_data is not properly allocated */
+    }
     memset(st, 0, sizeof(*st));
 
     /* store block_size & key_len for reference. */
@@ -174,7 +160,7 @@ static int aes_init(BlockCipherContext* ctx,
 
 static void aes_encrypt(BlockCipherContext *ctx, const u8 *pt, u8 *ct) {
     if (!ctx || !pt || !ct) return;
-    AesInternal *st = (AesInternal *)ctx->internal_data;
+    AesInternal* st = &ctx->aes_internal;
 
     /* Real code would do AES encryption. 
     We'll do a trivial mock: XOR with 0xAA for demonstration. */
@@ -305,7 +291,7 @@ static void aes_encrypt(BlockCipherContext *ctx, const u8 *pt, u8 *ct) {
 
 static void aes_decrypt(BlockCipherContext *ctx, const u8 *ct, u8 *pt) {
     if (!ctx || !ct || !pt) return;
-    AesInternal *st = (AesInternal *)ctx->internal_data;
+    AesInternal* st = &ctx->aes_internal;
 
     /* trivial mock: XOR with 0xAA again. */
     for (size_t i = 0; i < st->block_size; i++) {
@@ -315,7 +301,7 @@ static void aes_decrypt(BlockCipherContext *ctx, const u8 *ct, u8 *pt) {
 
 static void aes_dispose(BlockCipherContext *ctx) {
     if (!ctx) return;
-    AesInternal *st = (AesInternal *) ctx->internal_data;
+    AesInternal* st = &ctx->aes_internal;
     /* zero out everything */
     memset(st, 0, sizeof(*st));
 }

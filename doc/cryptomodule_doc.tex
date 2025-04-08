@@ -425,6 +425,53 @@ All of these components helped me detect issues early, confirm performance gains
 %  SECTION 1: BLOCK CIPHER
 %-----------------------------------------------------------------------
 \section{Block Cipher}
+A \textbf{block cipher} is a keyed family of permutations over a fixed-size data block. \begin{itemize}
+	\item Let \(k\) be a fixed key size and \(n\) be a fixed block size.
+	\item Let \(\mathcal{K} = \{0,1\}^k\) be the set of possible $k$-bit keys (each key is chosen from this set).
+	\item Let \(\mathcal{M} = \{0,1\}^n\) be the set of all \(n\)-bit messages (plaintext blocks).
+	\item Let \(\mathcal{C} = \{0,1\}^n\) be the set of all \(n\)-bit ciphertext blocks.
+\end{itemize}
+A \textbf{block cipher} is have two induced functions: \[
+E : \mathcal{K} \times \mathcal{M} \to \mathcal{C} 
+\quad\text{and}\quad
+D : \mathcal{K} \times \mathcal{C} \to \mathcal{M},
+\] referred to as the \textbf{encryption} and \textbf{decryption} functions, respectively. These must satisfy:
+\begin{enumerate}
+	\item \emph{Invertibility (permutation property)}: For each fixed key \(k \in \mathcal{K}\), the encryption function \[
+	E_k(\cdot) = E(k, \cdot): \mathcal{M} \to \mathcal{C}\quad\text{is a bijection (i.e., permutation) on $\{0,1\}^n$.}
+	\] In other words, for every key \(k\), there is a unique inverse $D_k(\cdot) = D(k, \cdot): \mathcal{C} \to \mathcal{M}$
+	s.t. \[
+	D_k\bigl(E_k(m)\bigr) = m \quad \text{and} \quad E_k\bigl(D_k(c)\bigr) = c\quad\text{for every $m \in \mathcal{M}$ and $c \in \mathcal{C}$.}
+	\]
+	\item \emph{Keyed operation}: The cipher’s behavior depends on the choice of key \(k\). Changing \(k\) results in a different permutation over the \(n\)-bit block space.
+\end{enumerate}
+\begin{table}[h!]
+	\centering\setstretch{.855}
+	\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ccccccc}
+		\hline
+		\textbf{Alg.} & $\boldsymbol{n}$ (bit) & $\boldsymbol{k}$ (bit) & \textbf{Rounds} (bit) & \textbf{RK Size} (bit) & \textbf{\# of RKs} (bit) & \textbf{Total RK Size} (bit) \\
+		\hline
+		\textsf{AES--128} & 128 & 128 & 10 & 128 (4-word) & 11 & 1408 (44-word) \\
+		\textsf{AES--192} & 128 & 192 & 12 & 128 (4-word) & 13 & 1664 (52-word)\\
+		\textsf{AES--256} & 128 & 256 & 14 & 128 (4-word) & 15 & 1920 (60-word)\\
+		\hline
+		\textsf{ARIA-128} & 128 & 128 & 12 & 128 (4-word) & 13 & 1664 (52-word)\\
+		\textsf{ARIA-192} & 128 & 192 & 14 & 128 (4-word) & 15 & 1920 (60-word)\\
+		\textsf{ARIA-256} & 128 & 256 & 16 & 128 (4-word) & 17 & 2176 (68-word)\\
+		\hline
+		\textsf{LEA-128} & 128 & 128 & 24 & 128 (4-word) & 24 & 3072 (96-word)\\
+		\textsf{LEA-192} & 128 & 192 & 28 & 128 (4-word) & 28 & 3584 (112-word)\\
+		\textsf{LEA-256} & 128 & 256 & 32 & 128 (4-word) & 32 & 4096 (128-word)\\
+		\hline
+	\end{tabular*}
+	\caption{Comparison of AES, ARIA, and LEA parameters for 128-, 192-, and 256-bit keys. 
+%		\newline 
+%		\textbf{RK} = Round-Key.
+	}
+	\label{tab:cipher-comparison}
+\end{table}
+
+\newpage
 \input{block_cipher/aes}
 % Detailed content about supported block ciphers, usage examples, ASM optimizations
 
