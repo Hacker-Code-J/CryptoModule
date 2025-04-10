@@ -344,8 +344,8 @@ void create_BlockCipher_KAT_RspFile(const char *filename_req, const char *filena
 
             // puts("After=");
             // print_cipher_internal(&ctx, aes_api->name);
-            u8 data_ptr[16] = {0,};
-            u8 encrypted_data[16] = {0,};
+            u8 data_ptr[AES_BLOCK_SIZE] = {0,};
+            u8 encrypted_data[AES_BLOCK_SIZE] = {0,};
             word2byte(data->pt, data_ptr);
 
             aes_api->encrypt_block(&ctx, data_ptr, encrypted_data);

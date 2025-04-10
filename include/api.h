@@ -24,7 +24,7 @@ typedef uint8_t    u8;
 typedef uint32_t   u32;
 typedef uint64_t   u64;
 
-/* Optionally define convenience ¡°enums¡±, ¡°error codes¡±, or ¡°global¡± functions here */
+/* Optionally define convenience ¡°enums¡±, ¡°error codes¡±, or ¡°global¡± functions*/
 typedef enum {
     CRYPTOMODULE_OK = 0,
     CRYPTOMODULE_ERR_INVALID_INPUT,

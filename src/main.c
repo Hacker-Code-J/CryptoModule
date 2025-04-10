@@ -16,7 +16,7 @@ int main(void) {
 
     // /* For AES-128, block_size=16, key_len=16. */
     // u8 key[16] = {0}; /* example all zero */
-    // if (aes_api->init(&ctx, 16, key, 16) != 0) {
+    // if (aes_api->init(&ctx, AES_BLOCK_SIZE, key, AES128_KEY_SIZE) != 0) {
     //     printf("Failed to init AES.\n");
     //     return 1;
     // }

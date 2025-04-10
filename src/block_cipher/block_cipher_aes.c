@@ -67,9 +67,9 @@ const BlockCipherApi *get_aes_api(void) { return &AES_API; }
 
 int aes_enc_key_expansion(BlockCipherContext *ctx, const u8 *in, u32 *out) {
     if (!ctx || !in || !out) return -1;
-    if (ctx->internal_data.aes_internal.key_len != 16 && 
-        ctx->internal_data.aes_internal.key_len != 24 && 
-        ctx->internal_data.aes_internal.key_len != 32) return -1;  /* unsupported key length */
+    if (ctx->internal_data.aes_internal.key_len != AES128_KEY_SIZE && 
+        ctx->internal_data.aes_internal.key_len != AES192_KEY_SIZE && 
+        ctx->internal_data.aes_internal.key_len != AES256_KEY_SIZE) return -1;  /* unsupported key length */
 
     u32 temp;
     int i, n;
@@ -102,8 +102,10 @@ int aes_enc_key_expansion(BlockCipherContext *ctx, const u8 *in, u32 *out) {
 /* ********** Implementation of the function pointers ********** */
 static int aes_init(BlockCipherContext *ctx, size_t block_size, const u8 *key, size_t key_len) {
     if (!ctx || !key) return -1;
-    if (block_size != 16) return -1; /* AES typically 128-bit block size */
-    if (key_len != 16 && key_len != 24 && key_len != 32) {
+    if (block_size != AES_BLOCK_SIZE) return -1; /* AES typically 128-bit block size */
+    if (key_len != AES128_KEY_SIZE && 
+        key_len != AES192_KEY_SIZE && 
+        key_len != AES256_KEY_SIZE) {
         return -1; /* only AES-128, 192, or 256 */
     }
 
@@ -125,9 +127,9 @@ static int aes_init(BlockCipherContext *ctx, size_t block_size, const u8 *key, s
 
     aes_enc_key_expansion(ctx, key, ctx->internal_data.aes_internal.round_keys);
     switch(key_len) {
-        case 16: ctx->internal_data.aes_internal.nr = 10; break;
-        case 24: ctx->internal_data.aes_internal.nr = 12; break;
-        case 32: ctx->internal_data.aes_internal.nr = 14; break;
+        case AES128_KEY_SIZE: ctx->internal_data.aes_internal.nr = AES128_NUM_ROUNDS; break;
+        case AES192_KEY_SIZE: ctx->internal_data.aes_internal.nr = AES192_NUM_ROUNDS; break;
+        case AES256_KEY_SIZE: ctx->internal_data.aes_internal.nr = AES256_NUM_ROUNDS; break;
     }
 
     return 0; /* success */

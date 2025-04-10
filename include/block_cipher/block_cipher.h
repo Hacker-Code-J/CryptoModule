@@ -9,6 +9,30 @@
 extern "C" {
 #endif
 
+#define AES_BLOCK_SIZE      16    /* AES block size in bytes    */
+#define AES128_KEY_SIZE     16    /* AES-128 key size in bytes  */
+#define AES192_KEY_SIZE     24    /* AES-192 key size in bytes  */
+#define AES256_KEY_SIZE     32    /* AES-256 key size in bytes  */
+#define AES128_NUM_ROUNDS   10    /* AES-128 number of rounds   */
+#define AES192_NUM_ROUNDS   12    /* AES-192 number of rounds   */
+#define AES256_NUM_ROUNDS   14    /* AES-256 number of rounds   */
+
+#define ARIA_BLOCK_SIZE     16    /* ARIA block size in bytes   */
+#define ARIA128_KEY_SIZE    16    /* ARIA-128 key size in bytes */
+#define ARIA192_KEY_SIZE    24    /* ARIA-192 key size in bytes */
+#define ARIA256_KEY_SIZE    32    /* ARIA-256 key size in bytes */
+#define ARIA128_NUM_ROUNDS  12    /* ARIA-128 number of rounds  */
+#define ARIA192_NUM_ROUNDS  14    /* ARIA-192 number of rounds  */
+#define ARIA256_NUM_ROUNDS  16    /* ARIA-256 number of rounds  */
+
+#define LEA_BLOCK_SIZE      16    /* LEA block size in bytes    */
+#define LEA128_KEY_SIZE     16    /* LEA-128 key size in bytes  */
+#define LEA192_KEY_SIZE     24    /* LEA-192 key size in bytes  */
+#define LEA256_KEY_SIZE     32    /* LEA-256 key size in bytes  */
+#define LEA128_NUM_ROUNDS   24    /* LEA-128 number of rounds   */
+#define LEA192_NUM_ROUNDS   28    /* LEA-192 number of rounds   */
+#define LEA256_NUM_ROUNDS   32    /* LEA-256 number of rounds   */
+
 /* Forward declaration for the context. */
 typedef struct BlockCipherContext BlockCipherContext;
 
@@ -22,9 +46,6 @@ typedef struct BlockCipherContext BlockCipherContext;
   * @details This structure contains function pointers for the block cipher operations.
   *          It includes the cipher name, initialization function, encryption and decryption functions,
   *          and a dispose function for cleaning up the context.
-  *          The BlockCipherApi structure is used to provide a consistent interface for different block ciphers,
-  *          allowing users to easily switch between different ciphers without changing the code that uses them.
-  *          The structure is designed to be extensible, allowing for the addition of new ciphers in the future.
   */
 typedef struct __BlockCipherApi__ {
     const char *name; /* e.g. "AES" or "MyCipher" */
@@ -71,7 +92,6 @@ typedef struct __BlockCipherApi__ {
  * @brief The internal structure for block ciphers.
  * @details This structure contains the internal state of the cipher, including round keys and other parameters.
  *          It is used to store the state of the cipher during encryption and decryption operations.
- *          The structure is designed to be extensible, allowing for the addition of new ciphers in the future.
  */
 typedef union __CipherInternal__ {
     struct __aes_internal__ {

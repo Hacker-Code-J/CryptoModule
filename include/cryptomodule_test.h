@@ -21,26 +21,6 @@ extern "C" {
  *          The plaintext and ciphertext are also of arbitrary length, allowing for flexible testing.
  *          This structure is used to facilitate the verification of known answer tests (KATs)
  *          for cryptographic algorithms.
- *          The key, IV, plaintext, and ciphertext are represented as arrays of 32-bit unsigned integers (u32).
- *          The lengths of these arrays are stored in the key_len, iv_len, pt_len, and ct_len fields.
- *          This structure is designed to be used in conjunction with KAT verification functions
- *          to ensure the correctness of cryptographic algorithms.
- *          The key and IV are typically used for encryption and decryption operations,
- *          while the plaintext and ciphertext are the input and output data for these operations.
- *          The structure allows for easy access to the test data and simplifies the process of KAT verification.
- *          The key_len, iv_len, pt_len, and ct_len fields are used to specify the lengths of the respective arrays,
- *          allowing for flexible handling of different key and IV sizes, as well as varying plaintext and ciphertext lengths.
- *          This structure is essential for performing KAT verification in a consistent and efficient manner.
- *          It provides a clear and organized way to manage the test data needed for cryptographic algorithm validation.
- *          The use of u32 arrays allows for efficient storage and manipulation of the key, IV, plaintext, and ciphertext data.
- *          This structure is designed to be used in conjunction with KAT verification functions
- *          to ensure the correctness of cryptographic algorithms.
- *          The key, IV, plaintext, and ciphertext are typically provided in a specific format,
- *          such as hexadecimal or binary, and the structure allows for easy conversion and processing of this data.
- *          The key_len, iv_len, pt_len, and ct_len fields are used to specify the lengths of the respective arrays,
- *          allowing for flexible handling of different key and IV sizes, as well as varying plaintext and ciphertext lengths.
- *          This structure is essential for performing KAT verification in a consistent and efficient manner.
- *          It provides a clear and organized way to manage the test data needed for cryptographic algorithm validation.
  */
 typedef struct __TestData__ {
     u32* key;   // Pointer for arbitrary length key
