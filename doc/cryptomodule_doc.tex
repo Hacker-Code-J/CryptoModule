@@ -237,7 +237,7 @@ I have developed a cryptographic software module in the C language, with an emph
 	child [missing] {}
 	child { node[fill=blue!30, draw=blue] {include}
 		child { node {block\_cipher}
-			child { node {\texttt{block\_cipher.h}} }
+			child { node[dashed,fill=teal!50] {\texttt{block\_cipher\_api.h}} }
 			child { node {\texttt{block\_cipher\_aes.h}} }
 			child { node {$\cdots$} }
 		}
@@ -245,13 +245,13 @@ I have developed a cryptographic software module in the C language, with an emph
 		child [missing] {}		
 		child [missing] {}
 		child { node {mode}
-			child { node {\texttt{mode.h}} }
+			child { node[dashed,fill=teal!50] {\texttt{mode\_api.h}} }
 			child { node {$\cdots$} }
 		}	
 		child [missing] {}
 		child [missing] {}
 		child { node {$\cdots$} }
-		child { node {\texttt{api.h}} }
+		child { node[dashed,fill=teal!50] {\texttt{api.h}} }
 	}	
 	child [missing] {}	
 	child [missing] {}

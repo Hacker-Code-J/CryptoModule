@@ -15,7 +15,7 @@
 
 # --- Project-wide settings ---
 CC          := gcc
-CFLAGS 		:= -std=c99 -g -O2 -Wall  -I. -Iinclude -Isrc
+CFLAGS 		:= -std=c99 -g -O2 -Wall -Wextra -I. -Iinclude -Isrc
 
 # Name of the final executable
 TARGET      := cryptomodule-demo

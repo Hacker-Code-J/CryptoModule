@@ -1,6 +1,6 @@
 /* File: include/block_cipher/block_cipher.h */
 
-#include "../api.h"
+#include "../cryptomodule_api.h"
 
 #ifndef BLOCK_CIPHER_H
 #define BLOCK_CIPHER_H
@@ -48,43 +48,25 @@ typedef enum {
 } BlockCipherType;
 typedef enum {
     BLOCK_CIPHER_OK = 0,
+    BLOCK_CIPHER_OK_INITIALIZATION,
     BLOCK_CIPHER_OK_KEY_EXPANSION,
     BLOCK_CIPHER_OK_ENCRYPTION,
     BLOCK_CIPHER_OK_DECRYPTION,
+    BLOCK_CIPHER_OK_PROCESS,
     BLOCK_CIPHER_OK_DISPOSE,
-    BLOCK_CIPHER_ERR_INVALID_INPUT,
-    BLOCK_CIPHER_ERR_INVALID_OUTPUT,
-    BlCK_CIPHER_ERR_INVALID_MODE,
-    BLOCK_CIPHER_ERR_MEMORY_ALLOCATION,
-    BLOCK_CIPHER_ERR_UNSUPPORTED_ALGORITHM,
+    BLOCK_CIPHER_ERR_INITIALIZATION,
+    BLOCK_CIPHER_ERR_KEY_EXPANSION,
+    BLOCK_CIPHER_ERR_ENCRYPTION,
+    BLOCK_CIPHER_ERR_DECRYPTION,
+    BLOCK_CIPHER_ERR_DISPOSE,
     BLOCK_CIPHER_ERR_INVALID_KEY_SIZE,
     BLOCK_CIPHER_ERR_INVALID_BLOCK_SIZE,
+    BLOCK_CIPHER_ERR_INVALID_INPUT,
+    BLOCK_CIPHER_ERR_INVALID_OUTPUT,
     BLOCK_CIPHER_ERR_INVALID_MODE,
-    BLOCK_CIPHER_ERR_INVALID_OPERATION,
-    BLOCK_CIPHER_ERR_UNINITIALIZED,
-    BLOCK_CIPHER_ERR_ALREADY_INITIALIZED,
-    BLOCK_CIPHER_ERR_INVALID_STATE,
-    BLOCK_CIPHER_ERR_BUFFER_TOO_SMALL,
-    BLOCK_CIPHER_ERR_KEY_MISMATCH,
-    BLOCK_CIPHER_ERR_OPERATION_FAILED,
-    BLOCK_CIPHER_ERR_INVALID_PADDING,
-    BLOCK_CIPHER_ERR_INVALID_IV,
-    BLOCK_CIPHER_ERR_INVALID_TAG,
-    BLOCK_CIPHER_ERR_INVALID_CONTEXT,
-    BLOCK_CIPHER_ERR_INVALID_PARAMETER,
-    BLOCK_CIPHER_ERR_INVALID_LENGTH,
-    BLOCK_CIPHER_ERR_INVALID_DATA,
-    BLOCK_CIPHER_ERR_INVALID_SIGNATURE,
-    BLOCK_CIPHER_ERR_INVALID_MAC,
-    BLOCK_CIPHER_ERR_INVALID_NONCE,
-    BLOCK_CIPHER_ERR_INVALID_SALT,
-    BLOCK_CIPHER_ERR_INVALID_AD,
-    BLOCK_CIPHER_ERR_INVALID_COUNTER,
-    BLOCK_CIPHER_ERR_INVALID_IV_LENGTH,
-    BLOCK_CIPHER_ERR_INVALID_TAG_LENGTH,
-    BLOCK_CIPHER_ERR_INVALID_KEY_LENGTH,
-    BLOCK_CIPHER_ERR_INVALID_BLOCK_LENGTH,
-    BLOCK_CIPHER_ERR_INVALID_PADDING_LENGTH,
+    BLOCK_CIPHER_ERR_MEMORY_ALLOCATION,
+    // BLOCK_CIPHER_ERR_UNSUPPORTED_ALGORITHM,
+    // BLOCK_CIPHER_ERR_MEMORY_ALLOCATION,
 } block_cipher_status_t;
 
 /* Forward declaration for the context. */
@@ -110,9 +92,10 @@ typedef struct __BlockCipherApi__ {
      * @param block_size Size of the block (e.g., 16 for AES).
      * @param key Pointer to the key.
      * @param key_len Length of the key in bytes.
-     * @return 0 on success, non-zero on failure.
+     * @param encrypt Flag indicating the operation mode (ENCRYPTION_MODE or DECRYPTION_MODE).
+     * @return Status of the initialization (BLOCK_CIPHER_OK or error code).
      */
-    block_cipher_status_t (*init)(BlockCipherContext* ctx, size_t block_size, const u8* key, size_t key_len);
+    block_cipher_status_t (*init)(BlockCipherContext* ctx, const u8* key, size_t block_size,  size_t key_len, int encrypt);
 
     /**
      * @brief Process a block of data (encrypt or decrypt).
@@ -120,6 +103,7 @@ typedef struct __BlockCipherApi__ {
      * @param input Pointer to the input block (plaintext for encryption, ciphertext for decryption).
      * @param output Pointer to the buffer where the output will be stored (ciphertext for encryption, plaintext for decryption).
      * @param encrypt Flag indicating the operation mode (ENCRYPTION_MODE or DECRYPTION_MODE).
+     * @return Status of the operation (BLOCK_CIPHER_OK or error code).
      */
     block_cipher_status_t (*process_block)(BlockCipherContext* ctx, const u8* input, u8* output, int encrypt);
 
@@ -129,7 +113,7 @@ typedef struct __BlockCipherApi__ {
      * @details This function should clean up any resources allocated for the context.
      *          It may also zero out sensitive data in the context.
      */
-    block_cipher_status_t (*dispose)(BlockCipherContext* ctx);
+    void (*dispose)(BlockCipherContext* ctx);
 
 } BlockCipherApi;
 
@@ -174,6 +158,14 @@ struct BlockCipherContext {
     const BlockCipherApi* api;  
     CipherInternal internal_data; /* Generic internal state for any cipher */
 };
+
+/**
+ * @brief Factory function to create a block cipher API.
+ * @param name Name of the cipher (e.g., "AES").
+ * @return Pointer to the BlockCipherApi structure for the specified cipher, or NULL if not found.
+ * @details This function is used to create a block cipher API based on the specified name.
+ */
+const BlockCipherApi* block_cipher_factory(const char *name);
 
 /**
  * @brief Factory function to create a block cipher API.

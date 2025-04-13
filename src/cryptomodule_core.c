@@ -1,5 +1,5 @@
 /* File: src/cryptomodule_core.c */
-#include "../include/api.h"
+#include "../include/cryptomodule_api.h"
 
 cryptomodule_status_t cryptomodule_init(void)
 {

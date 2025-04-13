@@ -1,58 +1,45 @@
-/*
- * Copyright 2002-2022 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the Apache License 2.0 (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
-
-/**
- * rijndael-alg-fst.c
- *
- * @version 3.0 (December 2000)
- *
- * Optimised ANSI C code for the Rijndael cipher (now AES)
- *
- * @author Vincent Rijmen
- * @author Antoon Bosselaers
- * @author Paulo Barreto
- *
- * This code is hereby placed in the public domain.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHORS ''AS IS'' AND ANY EXPRESS
- * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHORS OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
- * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
- * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
- * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
 /* File: src/block_cipher/block_cipher_aes.c */
 #include "../../include/block_cipher/block_cipher_aes.h"
 
 /* Forward declarations of static functions. */
-static block_cipher_status_t aes_init(BlockCipherContext *ctx, size_t block_size, const u8 *key, size_t key_len);
+static block_cipher_status_t aes_init(BlockCipherContext *ctx, const u8 *key, size_t block_size, size_t key_len, int encrypt);
 static block_cipher_status_t aes_process_block(BlockCipherContext *ctx, const u8 *input, u8 *output, int encrypt);
-static block_cipher_status_t aes_dispose(BlockCipherContext *ctx);
-// static block_cipher_status_t aes_init(BlockCipherContext *ctx, size_t block_size, const u8 *key, size_t key_len) {
-//     if (!ctx || !key) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
-//     if (block_size != AES_BLOCK_SIZE) return BLOCK_CIPHER_ERR_INVALID_BLOCK_LENGTH;
-//     if (key_len != AES128_KEY_SIZE && 
-//         key_len != AES192_KEY_SIZE && 
-//         key_len != AES256_KEY_SIZE) return BLOCK_CIPHER_ERR_INVALID_KEY_LENGTH;
+static void aes_dispose(BlockCipherContext *ctx);
 
-//     ctx->internal_data.aes_internal.block_size = block_size;
-//     ctx->internal_data.aes_internal.key_len = key_len;
-//     ctx->internal_data.aes_internal.nr = (key_len / 4) + 6; // Number of rounds
 
-//     return aes_set_encrypt_key(key, key_len, ctx->internal_data.aes_internal.round_keys);
+// static block_cipher_status_t aes_process_single_block(BlockCipherContext *ctx, const u8 *key, size_t key_len, const u8 *input, u8 *output, int encrypt) {
+
+// /**
+//  * @brief AES encryption/decryption function for a single block.
+//  * @param ctx Pointer to the block cipher context.
+//  * @param key Pointer to the key.
+//  * @param key_len Length of the key (AES128_KEY_SIZE, AES192_KEY_SIZE, or AES256_KEY_SIZE).
+//  * @param input Pointer to the input data buffer.
+//  * @param output Pointer to the output data buffer.
+//  * @param encrypt Flag indicating encryption (ENCRYPTION_MODE) or decryption (DECRYPTION_MODE).
+//  * @return Status of the operation.
+//  */
+// block_cipher_status_t aes_process_single_block(BlockCipherContext *ctx, const u8 *key, size_t key_len, const u8 *input, u8 *output, int encrypt) {
+//     if (!ctx || !key || !input || !output) return BLOCK_CIPHER_ERR_INVALID_INPUT;
+
+//     // Initialize the AES context
+//     block_cipher_status_t status = aes_init(ctx, AES_BLOCK_SIZE, key, key_len, encrypt);
+//     if (status != BLOCK_CIPHER_OK_INITIALIZATION) return status;
+
+//     // Process the single block
+//     status = aes_process_block(ctx, input, output, encrypt);
+//     if (status != BLOCK_CIPHER_OK_ENCRYPTION && status != BLOCK_CIPHER_OK_DECRYPTION) return status;
+
+//     return BLOCK_CIPHER_OK_PROCESS;
 // }
+
+block_cipher_status_t aes_enc_key_expansion(const u8 *in, u32 *out, size_t bytes);
+block_cipher_status_t aes_dec_key_expansion(const u8 *in, u32 *out, size_t bytes);
+block_cipher_status_t aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk);
+block_cipher_status_t aes_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk);
+block_cipher_status_t aes_encrypt(const u8 *in, u8 *out, const u32 *rk, int r);
+block_cipher_status_t aes_decrypt(const u8 *in, u8 *out, const u32 *rk, int r);
+
 // static block_cipher_status_t aes_dispose(BlockCipherContext *ctx) {
 //     if (!ctx) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
 //     // Zero out sensitive data
@@ -142,21 +129,9 @@ static const BlockCipherApi AES_API = {
  */
 const BlockCipherApi *get_aes_api(void) { return &AES_API; }
 
-block_cipher_status_t aes_enc_key_expansion(const u8 *in, u32 *out, int bytes);
-block_cipher_status_t aes_dec_key_expansion(const u32 *in, u32 *out, int bytes);
-block_cipher_status_t aes_set_encrypt_key(const u8 *key, int bytes, u32 *rk);
-block_cipher_status_t aes_set_decrypt_key(const u8 *key, int bytes, u32 *rk);
-block_cipher_status_t aes_encrypt(const u8 *in, u8 *out, const u32 *rk, int r);
-block_cipher_status_t aes_decrypt(const u8 *in, u8 *out, const u32 *rk, int r);
-
-block_cipher_status_t aes_enc_key_expansion(const u8 *in, u32 *out, int bytes) {
-    if (!in || !out) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
-    if (bytes != AES128_KEY_SIZE && 
-        bytes != AES192_KEY_SIZE && 
-        bytes != AES256_KEY_SIZE) return BLOCK_CIPHER_ERR_INVALID_KEY_LENGTH;
-
+block_cipher_status_t aes_enc_key_expansion(const u8 *in, u32 *out, size_t bytes) {
     u32 temp;
-    int i, n;
+    size_t i, n;
 
     n = bytes / 4;
 
@@ -167,66 +142,249 @@ block_cipher_status_t aes_enc_key_expansion(const u8 *in, u32 *out, int bytes) {
         else if ((n > 6) && (i % n == 4)) { temp = sub_word(temp); }
         out[i] = out[i - n] ^ temp;
     }
-    // for (i = 0; i < st->key_len; i++) {
+
+    // for (i=0; i < ((n + 6) + 1) * 4; i++) {
     //     printf("%08x:", out[i]);
     //     if (i % 4 == 3) printf("\n");
     // }
     return BLOCK_CIPHER_OK_KEY_EXPANSION;
 }
 
+block_cipher_status_t aes_dec_key_expansion(const u8 *in, u32 *out, size_t bytes) {
+    int nr; 
+    int i, j;
+    u32 temp;
+    
+    if (aes_enc_key_expansion(in, out, bytes) != BLOCK_CIPHER_OK_KEY_EXPANSION) {
+        return BLOCK_CIPHER_ERR_KEY_EXPANSION;
+    }
+    
+    switch (bytes) {
+        case AES128_KEY_SIZE: nr = AES128_NUM_ROUNDS; break;
+        case AES192_KEY_SIZE: nr = AES192_NUM_ROUNDS; break;
+        case AES256_KEY_SIZE: nr = AES256_NUM_ROUNDS; break;
+        default: return BLOCK_CIPHER_ERR_INVALID_KEY_SIZE;
+    }
 
-block_cipher_status_t AES_set_encrypt_key(const u8 *key, int bytes, u32 *rk) {
+    for (i = 0, j = 4 * nr; i < j; i += 4, j -= 4) {
+        temp = out[i    ]; out[i    ] = out[j    ]; out[j    ] = temp;
+        temp = out[i + 1]; out[i + 1] = out[j + 1]; out[j + 1] = temp;
+        temp = out[i + 2]; out[i + 2] = out[j + 2]; out[j + 2] = temp;
+        temp = out[i + 3]; out[i + 3] = out[j + 3]; out[j + 3] = temp;
+    }
+
+    for (i = 1; i < nr; i++) {
+        out += 4;
+        out[0] = 
+            Td0[Te1[out[0] >> 24       ]] ^
+            Td1[Te2[out[1] >> 16 & 0xff]] ^
+            Td2[Te3[out[2] >> 8  & 0xff]] ^
+            Td3[Te0[out[3]       & 0xff]];
+        out[1] =
+            Td0[Te1[out[1] >> 24       ]] ^
+            Td1[Te2[out[2] >> 16 & 0xff]] ^
+            Td2[Te3[out[3] >> 8  & 0xff]] ^
+            Td3[Te0[out[0]       & 0xff]];
+        out[2] =    
+            Td0[Te1[out[2] >> 24       ]] ^
+            Td1[Te2[out[3] >> 16 & 0xff]] ^
+            Td2[Te3[out[0] >> 8  & 0xff]] ^
+            Td3[Te0[out[1]       & 0xff]];
+        out[3] =
+            Td0[Te1[out[3] >> 24       ]] ^
+            Td1[Te2[out[0] >> 16 & 0xff]] ^
+            Td2[Te3[out[1] >> 8  & 0xff]] ^
+            Td3[Te0[out[2]       & 0xff]];
+    }
+
+    return BLOCK_CIPHER_OK_KEY_EXPANSION;
+}
+
+block_cipher_status_t aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk) {
     if (!key || !rk) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
     if (bytes != AES128_KEY_SIZE && 
         bytes != AES192_KEY_SIZE && 
-        bytes != AES256_KEY_SIZE) return BLOCK_CIPHER_ERR_INVALID_KEY_LENGTH;
+        bytes != AES256_KEY_SIZE) return BLOCK_CIPHER_ERR_INVALID_KEY_SIZE;
     return aes_enc_key_expansion(key, rk, bytes);
 }
 
-block_cipher_status_t aes_process_block(BlockCipherContext *ctx, const u8 *input, u8 *output, int encrypt) {
-    if (!ctx || !input || !output) return;
+block_cipher_status_t aes_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk) {
+    if (!key || !rk) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
+    if (bytes != AES128_KEY_SIZE && 
+        bytes != AES192_KEY_SIZE && 
+        bytes != AES256_KEY_SIZE) return BLOCK_CIPHER_ERR_INVALID_KEY_SIZE;
+    return aes_dec_key_expansion(key, rk, bytes);
+}
 
-    switch(encrypt) {
+block_cipher_status_t aes_init(BlockCipherContext *ctx, const u8 *key, size_t block_size, size_t key_len, int encrypt) {
+    if (!ctx || !key) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
+    if (block_size != AES_BLOCK_SIZE) return BLOCK_CIPHER_ERR_INVALID_BLOCK_SIZE;
+    if (key_len != AES128_KEY_SIZE && 
+        key_len != AES192_KEY_SIZE && 
+        key_len != AES256_KEY_SIZE) return BLOCK_CIPHER_ERR_INVALID_KEY_SIZE;
+
+    ctx->api = get_aes_api(); /* Link the context to the vtable. */
+    if (!ctx->api) {
+        return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION; /* internal_data is not properly allocated */
+    }
+    memset(ctx, 0, sizeof(*ctx)); /* Initialize the context. */
+
+    ctx->internal_data.aes_internal.block_size = block_size;
+    ctx->internal_data.aes_internal.key_len = key_len;
+    switch(key_len) {
+        case AES128_KEY_SIZE: ctx->internal_data.aes_internal.nr = AES128_NUM_ROUNDS; break;
+        case AES192_KEY_SIZE: ctx->internal_data.aes_internal.nr = AES192_NUM_ROUNDS; break;
+        case AES256_KEY_SIZE: ctx->internal_data.aes_internal.nr = AES256_NUM_ROUNDS; break;
+    }
+    memset(ctx->internal_data.aes_internal.round_keys, 0,
+           sizeof(ctx->internal_data.aes_internal.round_keys));
+
+    /* Key expansion */
+    switch (encrypt) {
         case ENCRYPTION_MODE:
-            aes_encrypt(input, output, ctx->internal_data.aes_internal.round_keys, ctx->internal_data.aes_internal.nr);
-            break;
+            if (aes_enc_key_expansion(key, ctx->internal_data.aes_internal.round_keys, key_len) != BLOCK_CIPHER_OK_KEY_EXPANSION) {
+                return BLOCK_CIPHER_ERR_INITIALIZATION;
+            } else {
+                return BLOCK_CIPHER_OK_INITIALIZATION;
+            }
         case DECRYPTION_MODE:
-            aes_decrypt(input, output, ctx->internal_data.aes_internal.round_keys, ctx->internal_data.aes_internal.nr);
-            break;
+            if (aes_dec_key_expansion(key, ctx->internal_data.aes_internal.round_keys, key_len) != BLOCK_CIPHER_OK_KEY_EXPANSION) {
+                return BLOCK_CIPHER_ERR_INITIALIZATION;
+            } else {
+                return BLOCK_CIPHER_OK_INITIALIZATION;
+            }
         default:
-            return ; // Invalid mode
+            return BLOCK_CIPHER_ERR_INVALID_MODE;
+    }
+}
+
+block_cipher_status_t aes_encrypt(const u8 *in, u8 *out, const u32 *rk, int r) {
+    if (!in || !out || !rk) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
+    
+    u32 s0, s1, s2, s3, t0, t1, t2, t3;
+
+    /* map byte array block to cipher state and add initial round key: */
+    s0 = GETU32(in +  0) ^ rk[0];
+    s1 = GETU32(in +  4) ^ rk[1];
+    s2 = GETU32(in +  8) ^ rk[2];
+    s3 = GETU32(in + 12) ^ rk[3];
+    /* apply round keys and main rounds: */
+    r = r >> 1; // AES rounds are halved for encryption
+    for (;;) {
+        t0 = Te0[s0 >> 24] ^ Te1[s1 >> 16 & 0xff] ^ Te2[s2 >> 8 & 0xff] ^ Te3[s3 & 0xff] ^ rk[4];
+        t1 = Te0[s1 >> 24] ^ Te1[s2 >> 16 & 0xff] ^ Te2[s3 >> 8 & 0xff] ^ Te3[s0 & 0xff] ^ rk[5];
+        t2 = Te0[s2 >> 24] ^ Te1[s3 >> 16 & 0xff] ^ Te2[s0 >> 8 & 0xff] ^ Te3[s1 & 0xff] ^ rk[6];
+        t3 = Te0[s3 >> 24] ^ Te1[s0 >> 16 & 0xff] ^ Te2[s1 >> 8 & 0xff] ^ Te3[s2 & 0xff] ^ rk[7];
+        
+        rk += 8;
+        if (--r == 0) break;
+
+        s0 = Te0[t0 >> 24] ^ Te1[t1 >> 16 & 0xff] ^ Te2[t2 >> 8 & 0xff] ^ Te3[t3 & 0xff] ^ rk[0];
+        s1 = Te0[t1 >> 24] ^ Te1[t2 >> 16 & 0xff] ^ Te2[t3 >> 8 & 0xff] ^ Te3[t0 & 0xff] ^ rk[1];
+        s2 = Te0[t2 >> 24] ^ Te1[t3 >> 16 & 0xff] ^ Te2[t0 >> 8 & 0xff] ^ Te3[t1 & 0xff] ^ rk[2];
+        s3 = Te0[t3 >> 24] ^ Te1[t0 >> 16 & 0xff] ^ Te2[t1 >> 8 & 0xff] ^ Te3[t2 & 0xff] ^ rk[3];
     }
 
-    // const u32* rk;
-    // u32 s0, s1, s2, s3, t0, t1, t2, t3;
-    // int r;
+    s0 = (Te2[s0 >> 24] & 0xff000000) ^ (Te3[s1 >> 16 & 0xff] & 0x00ff0000) ^ (Te0[s2 >> 8 & 0xff] & 0x0000ff00) ^ (Te1[s3 & 0xff] & 0x000000ff) ^ rk[0];
+    s1 = (Te2[s1 >> 24] & 0xff000000) ^ (Te3[s2 >> 16 & 0xff] & 0x00ff0000) ^ (Te0[s3 >> 8 & 0xff] & 0x0000ff00) ^ (Te1[s0 & 0xff] & 0x000000ff) ^ rk[1];
+    s2 = (Te2[s2 >> 24] & 0xff000000) ^ (Te3[s3 >> 16 & 0xff] & 0x00ff0000) ^ (Te0[s0 >> 8 & 0xff] & 0x0000ff00) ^ (Te1[s1 & 0xff] & 0x000000ff) ^ rk[2];
+    s3 = (Te2[s3 >> 24] & 0xff000000) ^ (Te3[s0 >> 16 & 0xff] & 0x00ff0000) ^ (Te0[s1 >> 8 & 0xff] & 0x0000ff00) ^ (Te1[s2 & 0xff] & 0x000000ff) ^ rk[3];
+    /* map cipher state to byte array block: */
+    PUTU32(out +  0, s0);
+    PUTU32(out +  4, s1);
+    PUTU32(out +  8, s2);
+    PUTU32(out + 12, s3);
 
-    // rk = ctx->internal_data.aes_internal.round_keys;
-    // r = ctx->internal_data.aes_internal.nr;
-
-    /* AES encryption/decryption logic goes here. */
-    /* For example, you can use the AES encryption/decryption functions from the original rijndael-alg-fst.c */
-    /* This is a placeholder for the actual AES encryption/decryption logic. */
-    /* Example: */
-    // AES_encrypt(input, output, rk, r);
-    // AES_decrypt(input, output, rk, r);
-    /* Note: The actual AES encryption/decryption logic should be implemented here. */
-    /* For now, just copy input to output as a placeholder. */
-    // memcpy(output, input, ctx->internal_data.aes_internal.block_size);
-    // if (encrypt) {
-    //     AES_encrypt(input, output, rk, r);
-    // } else {
-    //     AES_decrypt(input, output, rk, r);
+    // printf("AES encrypt: ");
+    // for (i = 0; i < st->key_len; i++) {
+    //     printf("%08x:", out[i]);
+    //     if (i % 4 == 3) printf("\n");
     // }
-    // memcpy(output, input, ctx->internal_data.aes_internal.block_size);
-    // AES_encrypt(input, output, rk, r);
-    // AES_decrypt(input, output, rk, r);
-    // memcpy(output, input, ctx->internal_data.aes_internal.block_size);
-    // AES_encrypt(input, output, rk, r);
-    // AES_decrypt(input, output, rk, r);
-    // memcpy(output, input, ctx->internal_data.aes_internal.block_size);
-    // AES_encrypt(input, output, rk, r);
-    // AES_decrypt(input, output, rk, r);
+    return BLOCK_CIPHER_OK_ENCRYPTION;
+}
+
+block_cipher_status_t aes_decrypt(const u8 *in, u8 *out, const u32 *rk, int r) {
+    if (!in || !out || !rk) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
+    
+    u32 s0, s1, s2, s3, t0, t1, t2, t3;
+    /* map byte array block to cipher state and add initial round key: */
+    s0 = GETU32(in +  0) ^ rk[0];
+    s1 = GETU32(in +  4) ^ rk[1];
+    s2 = GETU32(in +  8) ^ rk[2];
+    s3 = GETU32(in + 12) ^ rk[3];
+    /* apply round keys and main rounds: */
+    r = r >> 1; // AES rounds are halved for decryption
+    for (;;) {
+        t0 = Td0[s0 >> 24] ^ Td1[s1 >> 16 & 0xff] ^ Td2[s2 >> 8 & 0xff] ^ Td3[s3 & 0xff] ^ rk[4];
+        t1 = Td0[s1 >> 24] ^ Td1[s2 >> 16 & 0xff] ^ Td2[s3 >> 8 & 0xff] ^ Td3[s0 & 0xff] ^ rk[5];
+        t2 = Td0[s2 >> 24] ^ Td1[s3 >> 16 & 0xff] ^ Td2[s0 >> 8 & 0xff] ^ Td3[s1 & 0xff] ^ rk[6];
+        t3 = Td0[s3 >> 24] ^ Td1[s0 >> 16 & 0xff] ^ Td2[s1 >> 8 & 0xff] ^ Td3[s2 & 0xff] ^ rk[7];
+        
+        rk += 8;
+        if (--r == 0) break;
+
+        s0 = Td0[t0 >> 24] ^ Td1[t1 >> 16 & 0xff] ^ Td2[t2 >> 8 & 0xff] ^ Td3[t3 & 0xff] ^ rk[0];
+        s1 = Td0[t1 >> 24] ^ Td1[t2 >> 16 & 0xff] ^ Td2[t3 >> 8 & 0xff] ^ Td3[t0 & 0xff] ^ rk[1];
+        s2 = Td0[t2 >> 24] ^ Td1[t3 >> 16 & 0xff] ^ Td2[t0 >> 8 & 0xff] ^ Td3[t1 & 0xff] ^ rk[2];
+        s3 = Td0[t3 >> 24] ^ Td1[t0 >> 16 & 0xff] ^ Td2[t1 >> 8 & 0xff] ^ Td3[t2 & 0xff] ^ rk[3];
+    }
+    s0 = ((u32)Td4[(t0 >> 24)] << 24) ^ ((u32)Td4[(t3 >> 16) & 0xff] << 16) ^ ((u32)Td4[(t2 >> 8) & 0xff] << 8) ^ ((u32)Td4[t1 & 0xff]) ^ rk[0];
+    s1 = ((u32)Td4[(t1 >> 24)] << 24) ^ ((u32)Td4[(t0 >> 16) & 0xff] << 16) ^ ((u32)Td4[(t3 >> 8) & 0xff] << 8) ^ ((u32)Td4[t2 & 0xff]) ^ rk[1];
+    s2 = ((u32)Td4[(t2 >> 24)] << 24) ^ ((u32)Td4[(t1 >> 16) & 0xff] << 16) ^ ((u32)Td4[(t0 >> 8) & 0xff] << 8) ^ ((u32)Td4[t3 & 0xff]) ^ rk[2];
+    s3 = ((u32)Td4[(t3 >> 24)] << 24) ^ ((u32)Td4[(t2 >> 16) & 0xff] << 16) ^ ((u32)Td4[(t1 >> 8) & 0xff] << 8) ^ ((u32)Td4[t0 & 0xff]) ^ rk[3];
+    /* map cipher state to byte array block: */
+    PUTU32(out +  0, s0);
+    PUTU32(out +  4, s1);
+    PUTU32(out +  8, s2);
+    PUTU32(out + 12, s3);
+    
+    // printf("AES decrypt: ");
+    // for (i = 0; i < st->key_len; i++) {
+    //     printf("%08x:", out[i]);
+    //     if (i % 4 == 3) printf("\n");
+    // }
+    
+    return BLOCK_CIPHER_OK_DECRYPTION;
+}
+
+block_cipher_status_t aes_process_block(BlockCipherContext *ctx, const u8 *input, u8 *output, int encrypt) {
+    if (!ctx || !input || !output) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
+    
+    switch(encrypt) {
+        case ENCRYPTION_MODE:
+            return aes_encrypt(input, output, ctx->internal_data.aes_internal.round_keys, ctx->internal_data.aes_internal.nr);
+        case DECRYPTION_MODE:
+            return aes_decrypt(input, output, ctx->internal_data.aes_internal.round_keys, ctx->internal_data.aes_internal.nr);
+        default:
+            return BLOCK_CIPHER_ERR_INVALID_MODE;
+    }
+}
+
+// static block_cipher_status_t aes_dispose(BlockCipherContext *ctx) {
+//     if (!ctx) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
+//     // Zero out sensitive data
+//     memset(ctx->internal_data.aes_internal.round_keys, 0, sizeof(ctx->internal_data.aes_internal.round_keys));
+//     return BLOCK_CIPHER_OK_DISPOSE;
+// }
+static void aes_dispose(BlockCipherContext *ctx) {
+    if (!ctx) return;
+    // Zero out sensitive data
+    memset(ctx->internal_data.aes_internal.round_keys, 0, sizeof(ctx->internal_data.aes_internal.round_keys));
+    // Dispose of the context
+    if (ctx->api && ctx->api->dispose) {
+        ctx->api->dispose(ctx);
+    }
+    ctx->api = NULL;
+    ctx->internal_data.aes_internal.block_size = 0;
+    ctx->internal_data.aes_internal.key_len = 0;
+    ctx->internal_data.aes_internal.nr = 0;
+    memset(ctx->internal_data.aes_internal.round_keys, 0, sizeof(ctx->internal_data.aes_internal.round_keys));
+
+
+    // if (!ctx) return;
+    // Clear the key material in aes_internal
+    // memset(&ctx->internal_data.aes_internal, 0,
+    // sizeof(ctx->internal_data.aes_internal));
 }
 
 // /* Forward declarations of static functions. */

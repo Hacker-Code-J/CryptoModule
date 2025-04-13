@@ -1,16 +1,15 @@
 /* File: src/block_cipher/block_cipher_factory.c */
 #include "../../include/block_cipher/block_cipher_api.h"
-#include "../../include/block_cipher/block_cipher_aes.h"
+// #include "../../include/block_cipher/block_cipher_aes.h"
 
 /* 
    If you had block_cipher_aria.h, block_cipher_lea.h, you'd include them too.
    e.g. #include "block_cipher_aria.h"
 */
 
-#include <string.h>
+// #include <string.h>
 
-const BlockCipherApi* block_cipher_factory(const char *name)
-{
+const BlockCipherApi* block_cipher_factory(const char *name) {
     if (!name) return NULL;
 
     if (strcmp(name, "AES") == 0) {
@@ -23,8 +22,7 @@ const BlockCipherApi* block_cipher_factory(const char *name)
     return NULL;
 }
 
-void print_cipher_internal(const BlockCipherContext* ctx, const char* cipher_type)
-{
+void print_cipher_internal(const BlockCipherContext* ctx, const char* cipher_type) {
     if (ctx == NULL) {
         printf("BlockCipherContext is NULL\n");
         return;
@@ -36,24 +34,46 @@ void print_cipher_internal(const BlockCipherContext* ctx, const char* cipher_typ
 
     printf("----------------------------------------------------------------------\n");
     printf("Cipher Type: %s\n", cipher_type);
-    printf("Block Size: %zu\n", ctx->internal_data.aes_internal.block_size);
-    printf("Key Length: %zu\n", ctx->internal_data.aes_internal.key_len);
-    printf("Number of Rounds: %d\n", ctx->internal_data.aes_internal.nr);
-    // Add more fields as needed
-    printf("Round Keys: \n");
-    for (int i = 0; i < 60; i++) {
-        printf("%08X ", ctx->internal_data.aes_internal.round_keys[i]);
+    printf("----------------------------------------------------------------------\n");
+    printf("| %-20s | %-20s | %-20s |\n", "Field", "Address", "Offset");
+    printf("----------------------------------------------------------------------\n");
+
+    printf("| %-20s | %-20p | %-20ld |\n", 
+           "Block Size", 
+           (void*)&ctx->internal_data.aes_internal.block_size, 
+           (long)((unsigned char*)&ctx->internal_data.aes_internal.block_size - (unsigned char*)ctx));
+
+    printf("| %-20s | %-20p | %-20ld |\n", 
+           "Key Length", 
+           (void*)&ctx->internal_data.aes_internal.key_len, 
+           (long)((unsigned char*)&ctx->internal_data.aes_internal.key_len - (unsigned char*)ctx));
+
+    printf("| %-20s | %-20p | %-20ld |\n", 
+           "Round Keys", 
+           (void*)&ctx->internal_data.aes_internal.round_keys, 
+           (long)((unsigned char*)&ctx->internal_data.aes_internal.round_keys - (unsigned char*)ctx));
+
+    printf("| %-20s | %-20p | %-20ld |\n", 
+            "Number of Rounds", 
+            (void*)&ctx->internal_data.aes_internal.nr, 
+            (long)((unsigned char*)&ctx->internal_data.aes_internal.nr - (unsigned char*)ctx));
+
+    printf("----------------------------------------------------------------------\n");
+    printf("---------------------------------------------------------------------------------------------\n");
+    printf("| %-20s | %-20s | %-20s | %-20s |\n", "Index", "Address", "Offset", "Value");
+    printf("---------------------------------------------------------------------------------------------\n");
+    for (int i = 0; i < sizeof(ctx->internal_data.aes_internal.round_keys) / sizeof(ctx->internal_data.aes_internal.round_keys[0]); i++) {
+        printf("| %-20d | %-20p | %-20ld | %-20X |\n", 
+               i, 
+               (void*)&ctx->internal_data.aes_internal.round_keys[i], 
+               (long)((unsigned char*)&ctx->internal_data.aes_internal.round_keys[i] - (unsigned char*)ctx), 
+               ctx->internal_data.aes_internal.round_keys[i]);
         if ((i + 1) % 8 == 0) {
-            printf("\n");
+            printf("---------------------------------------------------------------------------------------------\n");
         }
     }
-    printf("\n");
-    printf("----------------------------------------------------------------------\n");
-    // Add more fields as needed
-    // printf("Internal Data: %p\n", ctx->internal_data);
-    // printf("Internal Data Size: %zu\n", sizeof(ctx->internal_data));
-    // printf("Internal Data Address: %p\n", (void*)&ctx->internal_data);
-
+    // printf("\n");
+    printf("---------------------------------------------------------------------------------------------\n");
 }
 
 // #include "../../include/blockcipher/block_cipher_aes.h"

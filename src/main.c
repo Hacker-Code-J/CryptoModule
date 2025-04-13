@@ -1,11 +1,80 @@
 /* File: src/main.c */
-#include "../include/api.h"
+#include "../include/cryptomodule_api.h"
 #include "cryptomodule_utils.h"
 #include "../include/cryptomodule_test.h"
+#include "../include/block_cipher/block_cipher_api.h"
 
 int main(void) {
 
-    KAT_TEST_BLOCKCIPHER_AES();
+    /* 1) Get the AES vtable. */
+    const BlockCipherApi *aes_api = block_cipher_factory("AES");
+    
+    if (!aes_api) {
+        printf("No AES API available.\n");
+        return 1;
+    }
+    /* 2) Create a context and call init. */
+    BlockCipherContext ctx;
+    memset(&ctx, 0, sizeof(ctx));
+    /* For AES-128, block_size=16, key_len=16. */
+    u8 key[16] = {0}; /* example all zero */
+    stringToByteArray("2B7E151628AED2A6ABF7158809CF4F3C", key);
+    printf("Key       : ");
+    for (int i = 0; i < 16; i++) {
+        printf("%02X ", key[i]);
+    }
+    printf("\n");
+
+    block_cipher_status_t status_init;
+    status_init = aes_api->init(&ctx, key, AES_BLOCK_SIZE, AES128_KEY_SIZE, ENCRYPTION_MODE);
+    if (status_init != BLOCK_CIPHER_OK_INITIALIZATION) {
+        printf("Failed to init AES.\n");
+        return 1;
+    }
+    // /* 3) Encrypt or Decrypt a single 16-byte block. */
+    u8 plaintext[16] = {};
+    stringToByteArray("f34481ec3cc627bacd5dc3fb08f273e6", plaintext);
+    u8 ciphertext[16] = {0};
+    u8 decrypted[16]  = {0};
+    block_cipher_status_t status_process = aes_api->process_block(&ctx, plaintext, ciphertext, ENCRYPTION_MODE);
+    if (status_process != BLOCK_CIPHER_OK_ENCRYPTION) {
+        printf("Failed to encrypt block.\n");
+        return 1;
+    }
+    // print_cipher_internal(&ctx, "AES");
+    // aes_api->dispose(&ctx);
+    // print_cipher_internal(&ctx, "AES");
+    // status_init = aes_api->init(&ctx, key, AES_BLOCK_SIZE, AES128_KEY_SIZE, DECRYPTION_MODE);
+    // if (status_init2 != BLOCK_CIPHER_OK_INITIALIZATION) {
+    //     printf("Failed to init AES.\n");
+    //     return 1;
+    // }
+    // block_cipher_status_t status_process2 = aes_api->process_block(&ctx, ciphertext, decrypted, DECRYPTION_MODE);
+    // if (status_process2 != BLOCK_CIPHER_OK_DECRYPTION) {
+    //     printf("Failed to decrypt block.\n");
+    //     return 1;
+    // }
+    
+    printf("Original  : ");
+    for (int i = 0; i < 16; i++) {
+        printf("%02X ", plaintext[i]);
+    }
+    printf("\nEncrypted : ");
+    for (int i = 0; i < 16; i++) {
+        printf("%02X ", ciphertext[i]);
+    }
+    puts("");
+    // /* 4) Dispose. */
+    // if (aes_api->dispose) {
+    //     aes_api->dispose(&ctx);
+    // }
+    // printf("\nDecrypted: ");
+    // for (int i = 0; i < 16; i++) {
+    //     printf("%02X ", decrypted[i]);
+    // }
+    // puts("");
+
+    // KAT_TEST_BLOCKCIPHER_AES();
 
     // /* 1) Get the AES vtable. */
     // const BlockCipherApi *aes_api = get_aes_api();

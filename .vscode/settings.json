@@ -73,7 +73,10 @@
     "cryptomodule_test.h": "c",
     "cryptomodule_utils.h": "c",
     "stddef.h": "c",
-    "stdio.h": "c"
+    "stdio.h": "c",
+    "api.h": "c",
+    "block_cipher_api.h": "c",
+    "typeinfo": "c"
   },
   "files.exclude": {
     "**/*.vo": true,
