@@ -1,6 +1,18 @@
 /* File: include/block_cipher/block_cipher.h */
-
 #include "../cryptomodule_api.h"
+
+/**
+ * @file block_cipher_api.h
+ * @brief This file defines the API for block cipher operations.
+ * @details It includes the definitions for block cipher types, key sizes, block sizes,
+ *          and the function pointers for initialization, encryption, decryption, and disposal.
+ *          The API is designed to be extensible for different block cipher algorithms.
+ *          The block cipher API allows for the implementation of various block ciphers
+ *          such as AES, ARIA, and LEA. It provides a unified interface for initializing,
+ *          processing blocks of data, and disposing of the cipher context.
+ *          The API is designed to be extensible for different block cipher algorithms.
+ *          The block cipher API allows for the implementation of various block ciphers
+ */
 
 #ifndef BLOCK_CIPHER_H
 #define BLOCK_CIPHER_H
@@ -33,38 +45,53 @@ extern "C" {
 #define LEA192_NUM_ROUNDS   28    /* LEA-192 number of rounds   */
 #define LEA256_NUM_ROUNDS   32    /* LEA-256 number of rounds   */
 
-#define ENCRYPTION_MODE 1
-#define DECRYPTION_MODE 2
+/**
+ * @brief Block cipher direction enumeration.
+ * @details This enumeration defines the direction of the block cipher operation.
+ */
+typedef enum {
+    BLOCK_CIPHER_ENCRYPTION = 0xE, // Encryption mode
+    BLOCK_CIPHER_DECRYPTION = 0xD  // Decryption mode
+} BlockCipherDirection;
 
+// /**
+//  * @brief Block cipher type enumeration.
+//  * @details This enumeration defines the types of block ciphers supported.
+//  */
 // typedef enum {
-//     ENCRYPTION_MODE,
-//     DECRYPTION_MODE
-// } BlockCipherMode;
+//     BLOCK_CIPHER_AES = 0x0A,  // A for AES
+//     BLOCK_CIPHER_ARIA = 0x0B, // B for ARIA
+//     BLOCK_CIPHER_LEA = 0x0C,  // C for LEA
+//     BLOCK_CIPHER_UNKNOWN = 0x00 // Default unknown type
+// } BlockCipherType;
+
+/**
+ * @brief Block cipher status enumeration.
+ * @details This enumeration defines the status codes for block cipher operations.
+ */
 typedef enum {
-    BLOCK_CIPHER_AES,
-    BLOCK_CIPHER_ARIA,
-    BLOCK_CIPHER_LEA,
-    BLOCK_CIPHER_UNKNOWN
-} BlockCipherType;
-typedef enum {
-    BLOCK_CIPHER_OK = 0,
-    BLOCK_CIPHER_OK_INITIALIZATION,
-    BLOCK_CIPHER_OK_KEY_EXPANSION,
-    BLOCK_CIPHER_OK_ENCRYPTION,
-    BLOCK_CIPHER_OK_DECRYPTION,
-    BLOCK_CIPHER_OK_PROCESS,
-    BLOCK_CIPHER_OK_DISPOSE,
-    BLOCK_CIPHER_ERR_INITIALIZATION,
-    BLOCK_CIPHER_ERR_KEY_EXPANSION,
-    BLOCK_CIPHER_ERR_ENCRYPTION,
-    BLOCK_CIPHER_ERR_DECRYPTION,
-    BLOCK_CIPHER_ERR_DISPOSE,
-    BLOCK_CIPHER_ERR_INVALID_KEY_SIZE,
-    BLOCK_CIPHER_ERR_INVALID_BLOCK_SIZE,
-    BLOCK_CIPHER_ERR_INVALID_INPUT,
-    BLOCK_CIPHER_ERR_INVALID_OUTPUT,
-    BLOCK_CIPHER_ERR_INVALID_MODE,
-    BLOCK_CIPHER_ERR_MEMORY_ALLOCATION,
+    BLOCK_CIPHER_OK                     = 0x00,
+    BLOCK_CIPHER_OK_INITIALIZATION      = 0x01,
+    BLOCK_CIPHER_OK_KEY_EXPANSION       = 0x02,
+    BLOCK_CIPHER_OK_ENCRYPTION          = 0x03,
+    BLOCK_CIPHER_OK_DECRYPTION          = 0x04,
+    BLOCK_CIPHER_OK_PROCESS             = 0x05,
+    BLOCK_CIPHER_OK_DISPOSE             = 0x06,
+    BLOCK_CIPHER_ERR_AES_API            = 0x10,
+    BLOCK_CIPHER_ERR_ARIA_API           = 0x11,
+    BLOCK_CIPHER_ERR_LEA_API            = 0x12,
+    BLOCK_CIPHER_ERR_INVALID_DIRECTION  = 0x1D,  // Direction error
+    BLOCK_CIPHER_ERR_INITIALIZATION     = 0x2A,  // Initialization error
+    BLOCK_CIPHER_ERR_KEY_EXPANSION      = 0x2B,  // Key expansion error
+    BLOCK_CIPHER_ERR_ENCRYPTION         = 0x2C,  // Encryption error
+    BLOCK_CIPHER_ERR_DECRYPTION         = 0x2D,  // Decryption error
+    BLOCK_CIPHER_ERR_DISPOSE            = 0x2E,  // Dispose error
+    BLOCK_CIPHER_ERR_INVALID_KEY_SIZE   = 0x30,
+    BLOCK_CIPHER_ERR_INVALID_BLOCK_SIZE = 0x31,
+    BLOCK_CIPHER_ERR_INVALID_INPUT      = 0x32,
+    BLOCK_CIPHER_ERR_INVALID_OUTPUT     = 0x33,
+    BLOCK_CIPHER_ERR_INVALID_MODE       = 0x34,
+    BLOCK_CIPHER_ERR_MEMORY_ALLOCATION  = 0x40,
     // BLOCK_CIPHER_ERR_UNSUPPORTED_ALGORITHM,
     // BLOCK_CIPHER_ERR_MEMORY_ALLOCATION,
 } block_cipher_status_t;
@@ -92,20 +119,20 @@ typedef struct __BlockCipherApi__ {
      * @param block_size Size of the block (e.g., 16 for AES).
      * @param key Pointer to the key.
      * @param key_len Length of the key in bytes.
-     * @param encrypt Flag indicating the operation mode (ENCRYPTION_MODE or DECRYPTION_MODE).
+     * @param dir Direction of the cipher (ENCRYPTION_MODE or DECRYPTION_MODE).
      * @return Status of the initialization (BLOCK_CIPHER_OK or error code).
      */
-    block_cipher_status_t (*init)(BlockCipherContext* ctx, const u8* key, size_t block_size,  size_t key_len, int encrypt);
+    block_cipher_status_t (*init)(BlockCipherContext* ctx, const u8* key, size_t key_len, size_t block_size, BlockCipherDirection dir);
 
     /**
      * @brief Process a block of data (encrypt or decrypt).
      * @param ctx Pointer to the context.
-     * @param input Pointer to the input block (plaintext for encryption, ciphertext for decryption).
-     * @param output Pointer to the buffer where the output will be stored (ciphertext for encryption, plaintext for decryption).
-     * @param encrypt Flag indicating the operation mode (ENCRYPTION_MODE or DECRYPTION_MODE).
+     * @param in Pointer to the input block (plaintext for encryption, ciphertext for decryption).
+     * @param out Pointer to the buffer where the output will be stored (ciphertext for encryption, plaintext for decryption).
+     * @param dir Direction of the cipher (ENCRYPTION_MODE or DECRYPTION_MODE).
      * @return Status of the operation (BLOCK_CIPHER_OK or error code).
      */
-    block_cipher_status_t (*process_block)(BlockCipherContext* ctx, const u8* input, u8* output, int encrypt);
+    block_cipher_status_t (*process_block)(BlockCipherContext* ctx, const u8* in, u8* out, BlockCipherDirection dir);
 
     /**
      * @brief Dispose of the block cipher context.

@@ -62,8 +62,8 @@ void print_cipher_internal(const BlockCipherContext* ctx, const char* cipher_typ
     printf("---------------------------------------------------------------------------------------------\n");
     printf("| %-20s | %-20s | %-20s | %-20s |\n", "Index", "Address", "Offset", "Value");
     printf("---------------------------------------------------------------------------------------------\n");
-    for (int i = 0; i < sizeof(ctx->internal_data.aes_internal.round_keys) / sizeof(ctx->internal_data.aes_internal.round_keys[0]); i++) {
-        printf("| %-20d | %-20p | %-20ld | %-20X |\n", 
+    for (long unsigned int i = 0; i < sizeof(ctx->internal_data.aes_internal.round_keys) / sizeof(ctx->internal_data.aes_internal.round_keys[0]); i++) {
+        printf("| %-20ld | %-20p | %-20ld | %-20X |\n", 
                i, 
                (void*)&ctx->internal_data.aes_internal.round_keys[i], 
                (long)((unsigned char*)&ctx->internal_data.aes_internal.round_keys[i] - (unsigned char*)ctx), 

@@ -8,14 +8,7 @@
 extern "C" {
 #endif
 
-/* Rcon array for AES-128 (only need first 10 for 128-bit) */
-static const u32 rcon[] = {
-    0x01000000, 0x02000000, 0x04000000, 0x08000000,
-    0x10000000, 0x20000000, 0x40000000, 0x80000000,
-    0x1B000000, 0x36000000, /* for 128-bit blocks, Rijndael never uses more than 10 rcon values */
-};
-
-/* Get the AES block cipher vtable. */
+// /* Get the AES block cipher vtable. */
 const BlockCipherApi* get_aes_api(void);
 
 #define GETU32(pt) (((u32)(pt)[0] << 24) ^ ((u32)(pt)[1] << 16) ^ ((u32)(pt)[2] <<  8) ^ ((u32)(pt)[3]))
@@ -33,6 +26,20 @@ const BlockCipherApi* get_aes_api(void);
 //            ((u32)(pt)[2] << 0x08) ^
 //            ((u32)(pt)[3]);
 // }
+
+static inline void byte2word(u8 *b, u32 *st) {
+    st[0] = GETU32(b);
+    st[1] = GETU32(b + 0x04);
+    st[2] = GETU32(b + 0x08);
+    st[3] = GETU32(b + 0x0C);
+}
+
+static inline void word2byte(u32 *st, u8 *b) {
+    PUTU32(b       , st[0]);
+    PUTU32(b + 0x04, st[1]);
+    PUTU32(b + 0x08, st[2]);
+    PUTU32(b + 0x0C, st[3]);
+}
 
 /*
  * Te0[x] = S [x].[02, 01, 01, 03];
@@ -656,19 +663,12 @@ static inline u32 sub_word(u32 word) {
            ((u32)Te4[word & 0xff]);
 }
 
-static inline void byte2word(u8 b[16], u32 st[4]) {
-    st[0] = GETU32(b);
-    st[1] = GETU32(b + 0x04);
-    st[2] = GETU32(b + 0x08);
-    st[3] = GETU32(b + 0x0C);
-}
-
-static inline void word2byte(u32 st[4], u8 b[16]) {
-    PUTU32(b       , st[0]);
-    PUTU32(b + 0x04, st[1]);
-    PUTU32(b + 0x08, st[2]);
-    PUTU32(b + 0x0C, st[3]);
-}
+/* Rcon array for AES-128 (only need first 10 for 128-bit) */
+static const u32 rcon[] = {
+    0x01000000, 0x02000000, 0x04000000, 0x08000000,
+    0x10000000, 0x20000000, 0x40000000, 0x80000000,
+    0x1B000000, 0x36000000, /* for 128-bit blocks, Rijndael never uses more than 10 rcon values */
+};
 
 #ifdef __cplusplus
 }

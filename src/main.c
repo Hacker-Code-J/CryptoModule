@@ -4,19 +4,18 @@
 #include "../include/cryptomodule_test.h"
 #include "../include/block_cipher/block_cipher_api.h"
 
-int main(void) {
+/* Enable core dumps and set signal handlers for debugging */
+#include <signal.h>
+#include <stdlib.h>
+#include <execinfo.h>
+#include <unistd.h>
 
-    /* 1) Get the AES vtable. */
-    const BlockCipherApi *aes_api = block_cipher_factory("AES");
-    
-    if (!aes_api) {
-        printf("No AES API available.\n");
-        return 1;
-    }
-    /* 2) Create a context and call init. */
+int main(void) {
+    /* 1) Create a context and call init */
     BlockCipherContext ctx;
     memset(&ctx, 0, sizeof(ctx));
-    /* For AES-128, block_size=16, key_len=16. */
+
+    /* 2) Get the AES vtable. */
     u8 key[16] = {0}; /* example all zero */
     stringToByteArray("2B7E151628AED2A6ABF7158809CF4F3C", key);
     printf("Key       : ");
@@ -25,35 +24,34 @@ int main(void) {
     }
     printf("\n");
 
-    block_cipher_status_t status_init;
-    status_init = aes_api->init(&ctx, key, AES_BLOCK_SIZE, AES128_KEY_SIZE, ENCRYPTION_MODE);
-    if (status_init != BLOCK_CIPHER_OK_INITIALIZATION) {
-        printf("Failed to init AES.\n");
-        return 1;
-    }
-    // /* 3) Encrypt or Decrypt a single 16-byte block. */
-    u8 plaintext[16] = {};
-    stringToByteArray("f34481ec3cc627bacd5dc3fb08f273e6", plaintext);
-    u8 ciphertext[16] = {0};
-    u8 decrypted[16]  = {0};
-    block_cipher_status_t status_process = aes_api->process_block(&ctx, plaintext, ciphertext, ENCRYPTION_MODE);
-    if (status_process != BLOCK_CIPHER_OK_ENCRYPTION) {
-        printf("Failed to encrypt block.\n");
-        return 1;
-    }
-    // print_cipher_internal(&ctx, "AES");
-    // aes_api->dispose(&ctx);
-    // print_cipher_internal(&ctx, "AES");
-    // status_init = aes_api->init(&ctx, key, AES_BLOCK_SIZE, AES128_KEY_SIZE, DECRYPTION_MODE);
-    // if (status_init2 != BLOCK_CIPHER_OK_INITIALIZATION) {
-    //     printf("Failed to init AES.\n");
-    //     return 1;
-    // }
-    // block_cipher_status_t status_process2 = aes_api->process_block(&ctx, ciphertext, decrypted, DECRYPTION_MODE);
-    // if (status_process2 != BLOCK_CIPHER_OK_DECRYPTION) {
-    //     printf("Failed to decrypt block.\n");
-    //     return 1;
-    // }
+    /* 3) Encrypt or Decrypt a single 16-byte block. */
+    u8 plaintext[16] = { 0x00, };
+    stringToByteArray("6BC1BEE22E409F96E93D7E117393172A", plaintext);
+    u8 ciphertext[16] = { 0x00, };
+    u8 decrypted[16]  = { 0x00, };
+
+    memset(&ctx, 0, sizeof(ctx));
+    ctx.api = block_cipher_factory("AES");
+    ctx.api->init(&ctx, key, AES128_KEY_SIZE, AES_BLOCK_SIZE, BLOCK_CIPHER_ENCRYPTION);
+    ctx.api->process_block(&ctx, plaintext, ciphertext, BLOCK_CIPHER_ENCRYPTION);
+    // ctx.api->dispose(&ctx);
+    ctx.api->init(&ctx, key, AES128_KEY_SIZE, AES_BLOCK_SIZE, BLOCK_CIPHER_DECRYPTION);
+    ctx.api->process_block(&ctx, ciphertext, decrypted, BLOCK_CIPHER_DECRYPTION);
+    ctx.api->dispose(&ctx);
+   
+    // -- ENCRYPTION -- 
+    // memset(&enc_ctx, 0, sizeof(enc_ctx));
+    // enc_ctx.api = block_cipher_factory("AES");
+    // enc_ctx.api->init(&enc_ctx, key, AES128_KEY_SIZE, AES_BLOCK_SIZE, BLOCK_CIPHER_ENCRYPTION);
+    // enc_ctx.api->process_block(&enc_ctx, plaintext, ciphertext, BLOCK_CIPHER_ENCRYPTION);
+    // enc_ctx.api->dispose(&enc_ctx);
+
+    // -- DECRYPTION --
+    // memset(&dec_ctx, 0, sizeof(dec_ctx));
+    // dec_ctx.api = block_cipher_factory("AES");
+    // dec_ctx.api->init(&dec_ctx, key, 16, 16, BLOCK_CIPHER_DECRYPTION);
+    // dec_ctx.api->process_block(&dec_ctx, ciphertext, decrypted, BLOCK_CIPHER_DECRYPTION);
+    // dec_ctx.api->dispose(&dec_ctx);
     
     printf("Original  : ");
     for (int i = 0; i < 16; i++) {
@@ -63,16 +61,11 @@ int main(void) {
     for (int i = 0; i < 16; i++) {
         printf("%02X ", ciphertext[i]);
     }
+    printf("\nDecrypted : ");
+    for (int i = 0; i < 16; i++) {
+        printf("%02X ", decrypted[i]);
+    }
     puts("");
-    // /* 4) Dispose. */
-    // if (aes_api->dispose) {
-    //     aes_api->dispose(&ctx);
-    // }
-    // printf("\nDecrypted: ");
-    // for (int i = 0; i < 16; i++) {
-    //     printf("%02X ", decrypted[i]);
-    // }
-    // puts("");
 
     // KAT_TEST_BLOCKCIPHER_AES();
 
