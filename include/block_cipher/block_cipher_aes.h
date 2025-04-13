@@ -2,7 +2,7 @@
 #ifndef BLOCK_CIPHER_AES_H
 #define BLOCK_CIPHER_AES_H
 
-#include "block_cipher.h"
+#include "block_cipher_api.h"
 
 #ifdef __cplusplus
 extern "C" {

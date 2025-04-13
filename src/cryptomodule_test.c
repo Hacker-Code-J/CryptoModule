@@ -2,7 +2,7 @@
 
 #include "../include/cryptomodule_test.h"
 #include "../include/cryptomodule_utils.h"
-#include "../include/block_cipher/block_cipher.h"
+#include "../include/block_cipher/block_cipher_api.h"
 #include "../include/block_cipher/block_cipher_aes.h"
 
 void print_TestData(const TestData *data) {
@@ -502,7 +502,7 @@ void KAT_TEST_BLOCKCIPHER_AES(void) {
             for (size_t j = 0; j < data_fax->pt_len; j++) {
                 printf("%08x", data_fax->pt[j]);
             }
-            printf("\nActual PT  : ");
+            printf("\nActual PT   : ");
             for (size_t j = 0; j < data_rsp->pt_len; j++) {
                 printf("%08x", data_rsp->pt[j]);
             }
@@ -510,7 +510,7 @@ void KAT_TEST_BLOCKCIPHER_AES(void) {
             for (size_t j = 0; j < data_fax->ct_len; j++) {
                 printf("%08x", data_fax->ct[j]);
             }
-            printf("\nActual CT  : ");
+            printf("\nActual CT   : ");
             for (size_t j = 0; j < data_rsp->ct_len; j++) {
                 printf("%08x", data_rsp->ct[j]);
             }
@@ -522,7 +522,9 @@ void KAT_TEST_BLOCKCIPHER_AES(void) {
             break;
         }
 
-        usleep(50000); // Sleep for 50 milliseconds to slow down the progress bar
+        // usleep(50000); // Sleep for 50 milliseconds to slow down the progress bar
+        // usleep(10000); // Sleep for 10 milliseconds to slow down the progress bar
+
 
         free_TestData(data_fax);
         free_TestData(data_rsp);

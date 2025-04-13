@@ -33,6 +33,60 @@ extern "C" {
 #define LEA192_NUM_ROUNDS   28    /* LEA-192 number of rounds   */
 #define LEA256_NUM_ROUNDS   32    /* LEA-256 number of rounds   */
 
+#define ENCRYPTION_MODE 1
+#define DECRYPTION_MODE 2
+
+// typedef enum {
+//     ENCRYPTION_MODE,
+//     DECRYPTION_MODE
+// } BlockCipherMode;
+typedef enum {
+    BLOCK_CIPHER_AES,
+    BLOCK_CIPHER_ARIA,
+    BLOCK_CIPHER_LEA,
+    BLOCK_CIPHER_UNKNOWN
+} BlockCipherType;
+typedef enum {
+    BLOCK_CIPHER_OK = 0,
+    BLOCK_CIPHER_OK_KEY_EXPANSION,
+    BLOCK_CIPHER_OK_ENCRYPTION,
+    BLOCK_CIPHER_OK_DECRYPTION,
+    BLOCK_CIPHER_OK_DISPOSE,
+    BLOCK_CIPHER_ERR_INVALID_INPUT,
+    BLOCK_CIPHER_ERR_INVALID_OUTPUT,
+    BlCK_CIPHER_ERR_INVALID_MODE,
+    BLOCK_CIPHER_ERR_MEMORY_ALLOCATION,
+    BLOCK_CIPHER_ERR_UNSUPPORTED_ALGORITHM,
+    BLOCK_CIPHER_ERR_INVALID_KEY_SIZE,
+    BLOCK_CIPHER_ERR_INVALID_BLOCK_SIZE,
+    BLOCK_CIPHER_ERR_INVALID_MODE,
+    BLOCK_CIPHER_ERR_INVALID_OPERATION,
+    BLOCK_CIPHER_ERR_UNINITIALIZED,
+    BLOCK_CIPHER_ERR_ALREADY_INITIALIZED,
+    BLOCK_CIPHER_ERR_INVALID_STATE,
+    BLOCK_CIPHER_ERR_BUFFER_TOO_SMALL,
+    BLOCK_CIPHER_ERR_KEY_MISMATCH,
+    BLOCK_CIPHER_ERR_OPERATION_FAILED,
+    BLOCK_CIPHER_ERR_INVALID_PADDING,
+    BLOCK_CIPHER_ERR_INVALID_IV,
+    BLOCK_CIPHER_ERR_INVALID_TAG,
+    BLOCK_CIPHER_ERR_INVALID_CONTEXT,
+    BLOCK_CIPHER_ERR_INVALID_PARAMETER,
+    BLOCK_CIPHER_ERR_INVALID_LENGTH,
+    BLOCK_CIPHER_ERR_INVALID_DATA,
+    BLOCK_CIPHER_ERR_INVALID_SIGNATURE,
+    BLOCK_CIPHER_ERR_INVALID_MAC,
+    BLOCK_CIPHER_ERR_INVALID_NONCE,
+    BLOCK_CIPHER_ERR_INVALID_SALT,
+    BLOCK_CIPHER_ERR_INVALID_AD,
+    BLOCK_CIPHER_ERR_INVALID_COUNTER,
+    BLOCK_CIPHER_ERR_INVALID_IV_LENGTH,
+    BLOCK_CIPHER_ERR_INVALID_TAG_LENGTH,
+    BLOCK_CIPHER_ERR_INVALID_KEY_LENGTH,
+    BLOCK_CIPHER_ERR_INVALID_BLOCK_LENGTH,
+    BLOCK_CIPHER_ERR_INVALID_PADDING_LENGTH,
+} block_cipher_status_t;
+
 /* Forward declaration for the context. */
 typedef struct BlockCipherContext BlockCipherContext;
 
@@ -58,25 +112,16 @@ typedef struct __BlockCipherApi__ {
      * @param key_len Length of the key in bytes.
      * @return 0 on success, non-zero on failure.
      */
-    int (*init)(BlockCipherContext* ctx, size_t block_size, const u8* key, size_t key_len);
-
-    /* Encrypt exactly one block. */
+    block_cipher_status_t (*init)(BlockCipherContext* ctx, size_t block_size, const u8* key, size_t key_len);
 
     /**
-     * @brief Encrypt a block of plaintext.
+     * @brief Process a block of data (encrypt or decrypt).
      * @param ctx Pointer to the context.
-     * @param pt Pointer to the plaintext block to be encrypted.
-     * @param ct Pointer to the buffer where the ciphertext will be stored.
+     * @param input Pointer to the input block (plaintext for encryption, ciphertext for decryption).
+     * @param output Pointer to the buffer where the output will be stored (ciphertext for encryption, plaintext for decryption).
+     * @param encrypt Flag indicating the operation mode (ENCRYPTION_MODE or DECRYPTION_MODE).
      */
-    void (*encrypt_block)(BlockCipherContext* ctx, const u8* pt, u8* ct);
-
-    /**
-     * @brief Decrypt exactly one block.
-     * @param ctx Pointer to the context.
-     * @param ct Pointer to the ciphertext block to be decrypted.
-     * @param pt Pointer to the buffer where the plaintext will be stored.
-     */
-    void (*decrypt_block)(BlockCipherContext* ctx, const u8* ct, u8* pt);
+    block_cipher_status_t (*process_block)(BlockCipherContext* ctx, const u8* input, u8* output, int encrypt);
 
     /**
      * @brief Dispose of the block cipher context.
@@ -84,7 +129,7 @@ typedef struct __BlockCipherApi__ {
      * @details This function should clean up any resources allocated for the context.
      *          It may also zero out sensitive data in the context.
      */
-    void (*dispose)(BlockCipherContext* ctx);
+    block_cipher_status_t (*dispose)(BlockCipherContext* ctx);
 
 } BlockCipherApi;
 
@@ -153,3 +198,22 @@ void print_cipher_internal(const BlockCipherContext* ctx, const char* cipher_typ
 #endif
 
 #endif /* BLOCK_CIPHER_H */
+
+
+// typedef enum {
+//     BLOCK_CIPHER_INIT,
+//     BLOCK_CIPHER_ENCRYPT,
+//     BLOCK_CIPHER_DECRYPT,
+//     BLOCK_CIPHER_DISPOSE
+// } BlockCipherOperation;
+// typedef enum {
+//     BLOCK_CIPHER_SUCCESS = 0,
+//     BLOCK_CIPHER_FAILURE = -1
+// } BlockCipherResult;
+// typedef enum {
+//     BLOCK_CIPHER_UNINITIALIZED = 0,
+//     BLOCK_CIPHER_INITIALIZED,
+//     BLOCK_CIPHER_ENCRYPTING,
+//     BLOCK_CIPHER_DECRYPTING,
+//     BLOCK_CIPHER_DISPOSED
+// } BlockCipherState;

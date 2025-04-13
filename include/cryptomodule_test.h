@@ -1,7 +1,7 @@
 /* File: include/kat_verifier.h */
 
 #include "api.h"
-#include "block_cipher/block_cipher.h"
+#include "block_cipher/block_cipher_api.h"
 #include "cryptomodule_utils.h"
 
 #ifndef KAT_VERIFIER_H

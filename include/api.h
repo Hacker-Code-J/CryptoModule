@@ -41,7 +41,7 @@ cryptomodule_status_t cryptomodule_init(void);
 cryptomodule_status_t cryptomodule_cleanup(void);
 
 /* Block ciphers */
-#include "block_cipher/block_cipher.h"
+#include "block_cipher/block_cipher_api.h"
 #include "block_cipher/block_cipher_aes.h"
 
 /* Modes of operation */

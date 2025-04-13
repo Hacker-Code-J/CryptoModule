@@ -53,38 +53,74 @@ typedef uint32_t u32;
 typedef struct BlockCipherContext BlockCipherContext;
 
 typedef struct BlockCipherApi {
-    const char *name;
-    int (*init)(BlockCipherContext* ctx, size_t block_size, const u8* key, size_t key_len);
-    void (*encrypt_block)(BlockCipherContext* ctx, const u8* plaintext, u8* ciphertext);
-    void (*decrypt_block)(BlockCipherContext* ctx, const u8* ciphertext, u8* plaintext);
-    void (*dispose)(BlockCipherContext* ctx);
+  const char *name;
+  int (*init)(BlockCipherContext* ctx, size_t block_size, const u8* key, size_t key_len);
+  void (*process_block)(BlockCipherContext* ctx, const u8* input, u8* output, int encrypt); // Unified function for encrypt/decrypt
+  void (*dispose)(BlockCipherContext* ctx);
 } BlockCipherApi;
 
 typedef union CipherInternal {
-    struct {
-        size_t block_size;  /* Typically must be 16 for AES */
-        size_t key_len;     /* 16, 24, or 32 for AES-128/192/256 */
-        u32 round_keys[60]; 
-        int nr;             /* e.g., 10 for AES-128, 12, or 14... */
-    } aes_internal;
-    struct {
-        size_t block_size;  /* Typically must be 16 for ARIA */
-        size_t key_len;     /* 16, 24, or 32 for ARIA-128/192/256 */
-        u32 round_keys[68];
-        int nr;             /* e.g., 12 for ARIA-128, 14, or 16... */
-    } aria_internal;
-    struct {
-        size_t block_size;  /* Typically must be 16 for LEA */
-        size_t key_len;     /* 16, 24, or 32 for LEA-128/192/256 */
-        u32 round_keys[128];
-        int nr;             /* e.g., 24 for LEA-128, 28, or 32... */
-    } lea_internal;
+  struct {
+    size_t block_size;  /* Typically must be 16 for AES */
+    size_t key_len;     /* 16, 24, or 32 for AES-128/192/256 */
+    u32 round_keys[60]; 
+    int nr;             /* e.g., 10 for AES-128, 12, or 14... */
+  } aes_internal;
+  struct {
+    size_t block_size;  /* Typically must be 16 for ARIA */
+    size_t key_len;     /* 16, 24, or 32 for ARIA-128/192/256 */
+    u32 round_keys[68];
+    int nr;             /* e.g., 12 for ARIA-128, 14, or 16... */
+  } aria_internal;
+  struct {
+    size_t block_size;  /* Typically must be 16 for LEA */
+    size_t key_len;     /* 16, 24, or 32 for LEA-128/192/256 */
+    u32 round_keys[128];
+    int nr;             /* e.g., 24 for LEA-128, 28, or 32... */
+  } lea_internal;
 } CipherInternal;
 
 struct BlockCipherContext {
-    const BlockCipherApi* api;  
-    CipherInternal internal_data; /* Generic internal state for any cipher */
+  const BlockCipherApi* api;  
+  CipherInternal internal_data; /* Generic internal state for any cipher */
 };
+
+// /* Forward declaration */
+// typedef struct BlockCipherContext BlockCipherContext;
+
+// typedef struct BlockCipherApi {
+//     const char *name;
+//     int (*init)(BlockCipherContext* ctx, size_t block_size, const u8* key, size_t key_len);
+//     void (*encrypt_block)(BlockCipherContext* ctx, const u8* plaintext, u8* ciphertext);
+//     void (*decrypt_block)(BlockCipherContext* ctx, const u8* ciphertext, u8* plaintext);
+//     void (*dispose)(BlockCipherContext* ctx);
+// } BlockCipherApi;
+
+// typedef union CipherInternal {
+//     struct {
+//         size_t block_size;  /* Typically must be 16 for AES */
+//         size_t key_len;     /* 16, 24, or 32 for AES-128/192/256 */
+//         u32 round_keys[60]; 
+//         int nr;             /* e.g., 10 for AES-128, 12, or 14... */
+//     } aes_internal;
+//     struct {
+//         size_t block_size;  /* Typically must be 16 for ARIA */
+//         size_t key_len;     /* 16, 24, or 32 for ARIA-128/192/256 */
+//         u32 round_keys[68];
+//         int nr;             /* e.g., 12 for ARIA-128, 14, or 16... */
+//     } aria_internal;
+//     struct {
+//         size_t block_size;  /* Typically must be 16 for LEA */
+//         size_t key_len;     /* 16, 24, or 32 for LEA-128/192/256 */
+//         u32 round_keys[128];
+//         int nr;             /* e.g., 24 for LEA-128, 28, or 32... */
+//     } lea_internal;
+// } CipherInternal;
+
+// struct BlockCipherContext {
+//     const BlockCipherApi* api;  
+//     CipherInternal internal_data; /* Generic internal state for any cipher */
+// };
 
 // Function to print sizes and memory layout of a single BlockCipherContext
 void print_single_context_layout() {

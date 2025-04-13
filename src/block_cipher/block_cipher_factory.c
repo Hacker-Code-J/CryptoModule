@@ -1,5 +1,5 @@
 /* File: src/block_cipher/block_cipher_factory.c */
-#include "../../include/block_cipher/block_cipher.h"
+#include "../../include/block_cipher/block_cipher_api.h"
 #include "../../include/block_cipher/block_cipher_aes.h"
 
 /* 
