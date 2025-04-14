@@ -54,16 +54,38 @@ typedef enum {
     BLOCK_CIPHER_DECRYPTION = 0xD  // Decryption mode
 } BlockCipherDirection;
 
-// /**
-//  * @brief Block cipher type enumeration.
-//  * @details This enumeration defines the types of block ciphers supported.
-//  */
-// typedef enum {
-//     BLOCK_CIPHER_AES = 0x0A,  // A for AES
-//     BLOCK_CIPHER_ARIA = 0x0B, // B for ARIA
-//     BLOCK_CIPHER_LEA = 0x0C,  // C for LEA
-//     BLOCK_CIPHER_UNKNOWN = 0x00 // Default unknown type
-// } BlockCipherType;
+typedef enum {
+    BLOCK_CIPHER_AES = 0xAE5,   // Identifier for AES
+    BLOCK_CIPHER_ARIA = 0xA21A, // Identifier for ARIA
+    BLOCK_CIPHER_LEA = 0x1EA,   // Identifier for LEA
+    BLOCK_CIPHER_UNKNOWN = 0x00 // Default unknown type
+} BlockCipherType;
+
+/**
+ * @brief Converts a BlockCipherType to its corresponding string representation.
+ * @param type The BlockCipherType value.
+ * @return A string representing the cipher type (e.g., "AES", "ARIA", "LEA").
+ */
+static inline const char* block_cipher_type_to_string(BlockCipherType type) {
+    switch (type) {
+        case BLOCK_CIPHER_AES: return "AES";
+        case BLOCK_CIPHER_ARIA: return "ARIA";
+        case BLOCK_CIPHER_LEA: return "LEA";
+        default: return "UNKNOWN";
+    }
+}
+
+/**
+ * @brief Converts a string to its corresponding BlockCipherType.
+ * @param name The string representation of the cipher type (e.g., "AES", "ARIA", "LEA").
+ * @return The corresponding BlockCipherType value, or BLOCK_CIPHER_UNKNOWN if not recognized.
+ */
+static inline BlockCipherType string_to_block_cipher_type(const char* name) {
+    if (strcmp(name, "AES") == 0) return BLOCK_CIPHER_AES;
+    if (strcmp(name, "ARIA") == 0) return BLOCK_CIPHER_ARIA;
+    if (strcmp(name, "LEA") == 0) return BLOCK_CIPHER_LEA;
+    return BLOCK_CIPHER_UNKNOWN;
+}
 
 /**
  * @brief Block cipher status enumeration.
@@ -153,19 +175,22 @@ typedef union __CipherInternal__ {
     struct __aes_internal__ {
         size_t block_size;      /* Typically must be 16 for AES */
         size_t key_len;         /* 16, 24, or 32 for AES-128/192/256 */
-        u32 round_keys[60];     /* max for AES-256 */
+        /* max 60 for AES-256 */
+        u32 round_keys[4 * (AES256_NUM_ROUNDS + 1)];     
         int nr;                 /* e.g., 10 for AES-128, 12, or 14... */
     } aes_internal;
     struct __aria_internal__ {
         size_t block_size;      /* Typically must be 16 for ARIA */
         size_t key_len;         /* 16, 24, or 32 for ARIA-128/192/256 */
-        u32 round_keys[68];     /* max for ARIA-256 */
+        /* max 68 for ARIA-256 */
+        u32 round_keys[4 * (ARIA256_NUM_ROUNDS + 1)];     
         int nr;                 /* e.g., 12 for ARIA-128, 14, or 16... */
     } aria_internal;
     struct __lea_internal__ {
         size_t block_size;      /* Typically must be 16 for LEA */
         size_t key_len;         /* 16, 24, or 32 for LEA-128/192/256 */
-        u32 round_keys[128];    /* max for LEA-256 */
+        /* max 128 for LEA-256 */
+        u32 round_keys[4 * (LEA256_NUM_ROUNDS + 1)];    
         int nr;                 /* e.g., 24 for LEA-128, 28, or 32... */
     } lea_internal;
 } CipherInternal;
