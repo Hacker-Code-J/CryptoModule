@@ -221,22 +221,3 @@ void print_cipher_internal(const BlockCipherContext* ctx, const char* cipher_typ
 #endif
 
 #endif /* BLOCK_CIPHER_H */
-
-
-// typedef enum {
-//     BLOCK_CIPHER_INIT,
-//     BLOCK_CIPHER_ENCRYPT,
-//     BLOCK_CIPHER_DECRYPT,
-//     BLOCK_CIPHER_DISPOSE
-// } BlockCipherOperation;
-// typedef enum {
-//     BLOCK_CIPHER_SUCCESS = 0,
-//     BLOCK_CIPHER_FAILURE = -1
-// } BlockCipherResult;
-// typedef enum {
-//     BLOCK_CIPHER_UNINITIALIZED = 0,
-//     BLOCK_CIPHER_INITIALIZED,
-//     BLOCK_CIPHER_ENCRYPTING,
-//     BLOCK_CIPHER_DECRYPTING,
-//     BLOCK_CIPHER_DISPOSED
-// } BlockCipherState;

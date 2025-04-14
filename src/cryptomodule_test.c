@@ -266,9 +266,9 @@ void create_BlockCipher_KAT_RspFile(const char *filename_req, const char *filena
     while (fgets(line, bufsize, fp_req)) {
         if (strncmp(line, "COUNT =", 7) == 0) {
             if (!is_first_key) {
-                fprintf(fp_rsp, "\n");
+                fputc('\n', fp_rsp);
             } is_first_key = 0;
-            fputs(line, fp_rsp);
+            fprintf(fp_rsp, "%s", line);
         } else if (strncmp(line, "KEY =", 5) == 0) {
             if (ctx.api->dispose) {
                 ctx.api->dispose(&ctx);
@@ -331,7 +331,7 @@ void create_BlockCipher_KAT_RspFile(const char *filename_req, const char *filena
                 free_TestData(data);
                 return;
             }
-            memset(key, 0, sizeof(key));
+            // memset(key, 0, sizeof(key));
 
             // Encrypt the plaintext
             ctx.api->process_block(&ctx, byte_data, encrypted_byte_data, BLOCK_CIPHER_ENCRYPTION);
@@ -340,9 +340,9 @@ void create_BlockCipher_KAT_RspFile(const char *filename_req, const char *filena
                 fprintf(fp_rsp, "%08x", data->ct[i]);
             } 
             fprintf(fp_rsp, "\n");
-            // if (ctx.api->dispose) {
-            //     ctx.api->dispose(&ctx);
-            // }
+            if (ctx.api->dispose) {
+                ctx.api->dispose(&ctx);
+            }
             // printf("CT: ");
             // for (size_t i = 0; i < data->ct_len; i++) {
             //     printf("%08X ", data->ct[i]);
@@ -371,9 +371,9 @@ void KAT_TEST_BLOCKCIPHER_AES(void) {
     char filename_req[100];
     char filename_rsp[100];
 
-    snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarKey128.fax");
-    snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarKey128.req");
-    snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarKey128.rsp");
+    snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarKey128_ENC.fax");
+    snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarKey128_ENC.req");
+    snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarKey128_ENC.rsp");
 
 
     create_BlockCipher_KAT_ReqFile(filename_fax, filename_req);
@@ -482,8 +482,6 @@ void KAT_TEST_BLOCKCIPHER_AES(void) {
     printf("Result: %s\n\n", result ? "PASSED" : "FAILED");
 
     // Cleanup
-    free_TestData(data_fax);
-    free_TestData(data_rsp);
     fclose(fp_fax);
     fclose(fp_rsp);
 }
