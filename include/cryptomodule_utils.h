@@ -10,10 +10,6 @@
 extern "C" {
 #endif
 
-static inline void clear_ctx(BlockCipherContext *ctx) {
-    if (ctx) memset(ctx, 0, sizeof(*ctx));
-}
-
 void stringToByteArray(const char* str, u8* byteArray);
 void stringToWordArray(const char* str, u32* wordArray);
 

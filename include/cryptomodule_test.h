@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 #define MAX_LINE_LENGTH 9999
-#define MAX_TXT_SIZE 1028
+#define MAX_TXT_SIZE 3072
 
 /**
  * @brief Structure to hold test data for KAT verification.
@@ -61,19 +61,19 @@ void free_TestData(TestData *data);
 void parse_hexline(u32 *dst, const char* src, size_t length);
 
 /**
- * @brief Calculates the length of a word in a string.
- * @param string Pointer to the string.
- * @return Length of the word in the string.
- */
-size_t word_length(const char *string);
-
-/**
  * @brief Converts a hexadecimal string to a byte array.
  * @param string Pointer to the hexadecimal string.
  * @param byte_array Pointer to the destination byte array.
  * @return Length of the byte array.
  */
 size_t byte_length(const char *string);
+
+/**
+ * @brief Calculates the length of a word in a string.
+ * @param string Pointer to the string.
+ * @return Length of the word in the string.
+ */
+size_t word_length(const char *string);
 
 /**
  * @brief Reads test data from a file.

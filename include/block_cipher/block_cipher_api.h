@@ -186,6 +186,10 @@ struct BlockCipherContext {
     CipherInternal internal_data; /* Generic internal state for any cipher */
 };
 
+static inline void clear_block_cipher_ctx(BlockCipherContext *ctx) {
+    if (ctx) memset(ctx, 0, sizeof(*ctx));
+}
+
 /**
  * @brief Factory function to create a block cipher API.
  * @param name Name of the cipher (e.g., "AES").

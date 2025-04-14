@@ -76,7 +76,8 @@
     "stdio.h": "c",
     "api.h": "c",
     "block_cipher_api.h": "c",
-    "typeinfo": "c"
+    "typeinfo": "c",
+    "cstddef": "c"
   },
   "files.exclude": {
     "**/*.vo": true,
