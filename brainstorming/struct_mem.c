@@ -54,8 +54,8 @@ typedef struct BlockCipherContext BlockCipherContext;
 
 typedef struct BlockCipherApi {
   const char *name;
-  int (*init)(BlockCipherContext* ctx, size_t block_size, const u8* key, size_t key_len);
-  void (*process_block)(BlockCipherContext* ctx, const u8* input, u8* output, int encrypt); // Unified function for encrypt/decrypt
+  block_cipher_status_t (*init)(BlockCipherContext* ctx, const u8* key, size_t key_len, size_t block_size, BlockCipherDirection dir);
+  block_cipher_status_t (*process_block)(BlockCipherContext* ctx, const u8* in, u8* out, BlockCipherDirection dir);
   void (*dispose)(BlockCipherContext* ctx);
 } BlockCipherApi;
 

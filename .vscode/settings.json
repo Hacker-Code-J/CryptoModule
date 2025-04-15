@@ -77,7 +77,18 @@
     "api.h": "c",
     "block_cipher_api.h": "c",
     "typeinfo": "c",
-    "cstddef": "c"
+    "cstddef": "c",
+    "cryptomodule_api.h": "c",
+    "string": "c",
+    "compare": "c",
+    "functional": "c",
+    "tuple": "c",
+    "type_traits": "c",
+    "types.h": "c",
+    "features.h": "c",
+    "wordsize.h": "c",
+    "file.h": "c",
+    "mode_api.h": "c"
   },
   "files.exclude": {
     "**/*.vo": true,

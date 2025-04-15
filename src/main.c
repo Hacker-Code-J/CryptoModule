@@ -10,11 +10,12 @@
 #include <execinfo.h>
 #include <unistd.h>
 
-// #define TEST_FLAG = 1
+// #define TEST_FLAG 1
 
 int main(void) {
 
-    KAT_TEST_BLOCKCIPHER_AES();
+    KAT_TEST_BLOCKCIPHER(BLOCK_CIPHER_AES128);
+    // KAT_TEST_BLOCKCIPHER(BLOCK_CIPHER_AES192);
 
 #ifdef TEST_FLAG
     /* 1) Create a context and call init */

@@ -5,41 +5,6 @@
 #include "../include/block_cipher/block_cipher_api.h"
 #include "../include/block_cipher/block_cipher_aes.h"
 
-void print_TestData(const TestData *data) {
-    if (data == NULL) {
-        printf("TestData is NULL\n");
-        return;
-    }
-    // printf("Key Length: %zu\n", data->key_len);
-    // printf("IV Length: %zu\n", data->iv_len);
-    // printf("Plaintext Length: %zu\n", data->pt_len);
-    // printf("Ciphertext Length: %zu\n", data->ct_len);
-
-    printf("Key: ");
-    for (size_t i = 0; i < data->key_len; i++) {
-        printf("%08X ", data->key[i]);
-    }
-    printf("\n");
-
-    printf("IV: ");
-    for (size_t i = 0; i < data->iv_len; i++) {
-        printf("%08X ", data->iv[i]);
-    }
-    printf("\n");
-
-    printf("Plaintext: ");
-    for (size_t i = 0; i < data->pt_len; i++) {
-        printf("%08X ", data->pt[i]);
-    }
-    printf("\n");
-
-    // printf("Ciphertext: ");
-    for (size_t i = 0; i < data->ct_len; i++) {
-        printf("%08x", data->ct[i]);
-    }
-    printf("\n");
-}
-
 void progress_bar(int current, int total) {
     int width = 50; // Width of the progress bar
     float progress = (float)current / total;
@@ -58,16 +23,6 @@ void progress_bar(int current, int total) {
         else printf("%s ", RED); // Red for remaining part
     }
     printf("%s] %d%% (%d/%d)", RESET, (int)(progress * 100.0), current, total);    
-}
-
-void free_TestData(TestData *data) {
-    if (data) {
-        free(data->key);
-        free(data->iv);
-        free(data->pt);
-        free(data->ct);
-    }
-    data = NULL;
 }
 
 void parse_hexline(u32 *dst, const char* src, size_t length) {
@@ -103,74 +58,20 @@ size_t word_length(const char *string) {
     return word_length;
 }
 
-bool read_TestData(FILE *fp, TestData *data) {
-    char line[MAX_LINE_LENGTH];
-    size_t key_len = 0, iv_len = 0, pt_len = 0, ct_len = 0;
-
-    // Read the key
-    if (fgets(line, sizeof(line), fp) != NULL) {
-        key_len = word_length(line);
-        data->key = (u32*)malloc(key_len * sizeof(u32));
-        parse_hexline(data->key, line, key_len);
-    }
-    // Read the IV
-    if (fgets(line, sizeof(line), fp) != NULL) {
-        iv_len = word_length(line);
-        data->iv = (u32*)malloc(iv_len * sizeof(u32));
-        parse_hexline(data->iv, line, iv_len);
-    }
-    // Read the plaintext
-    if (fgets(line, sizeof(line), fp) != NULL) {
-        pt_len = word_length(line);
-        data->pt = (u32*)malloc(pt_len * sizeof(u32));
-        parse_hexline(data->pt, line, pt_len);
-    }
-    // Read the ciphertext
-    if (fgets(line, sizeof(line), fp) != NULL) {
-        ct_len = word_length(line);
-        data->ct = (u32*)malloc(ct_len * sizeof(u32));
-        parse_hexline(data->ct, line, ct_len);
-    }
-
-    data->key_len = key_len;
-    data->iv_len = iv_len;
-    data->pt_len = pt_len;
-    data->ct_len = ct_len;
-
-    return true;
-}
-
-void write_TestData(FILE *fp, const u32 *data, size_t length) {
+void write_data(FILE *fp, const u32 *data, size_t length) {
     for (size_t i = 0; i < length; i++) {
         fprintf(fp, "%08X", data[i]);
     }
     fprintf(fp, "\n");
 }
 
-bool compare_TestData(const TestData *data1, const TestData *data2) {
-    if (data1->key_len != data2->key_len || 
-        data1->iv_len != data2->iv_len || 
-        data1->pt_len != data2->pt_len || 
-        data1->ct_len != data2->ct_len) {
-        return false;
-    }
-
-    if (memcmp(data1->key, data2->key, data1->key_len * sizeof(u32)) != 0 ||
-        memcmp(data1->iv, data2->iv, data1->iv_len * sizeof(u32)) != 0 ||
-        memcmp(data1->pt, data2->pt, data1->pt_len * sizeof(u32)) != 0 ||
-        memcmp(data1->ct, data2->ct, data1->ct_len * sizeof(u32)) != 0) {
-        return false;
-    }
-
-    return true;
-}
-
-void create_BlockCipher_KAT_ReqFile(const char *filename_fax, const char *filename_req) {
+void create_BlockCipher_KAT_ReqFile(BlockCipherType type, const char *filename_fax, const char *filename_req) {
     FILE *fp_fax, *fp_req;
     char *line;
     size_t bufsize = MAX_LINE_LENGTH;
+    int flag = 0;
 
-    printf("[REQ] Creating request file: %s\n", filename_req);
+    printf("\x1b[34m[REQ] ? Creating request file: %s\x1b[0m\n", filename_req);
     fp_fax = fopen(filename_fax, "r");
     if (fp_fax == NULL) {
         fprintf(stderr, "[REQ] Error opening file: %s\n", filename_fax);
@@ -193,14 +94,20 @@ void create_BlockCipher_KAT_ReqFile(const char *filename_fax, const char *filena
     }
 
     while (fgets(line, bufsize, fp_fax) != NULL) {
-        if (strncmp(line, "COUNT =", 7) == 0) {
+        // printf("[RSP] %s", line);
+        if (strncmp(line, "[ENCRYPT]", 9) == 0) {
+            fputs(line, fp_req); fputs("\n", fp_req);
+        } else if (strncmp(line, "[DECRYPT]", 9) == 0) {
+            flag = 1;
+            fputs(line, fp_req); fputs("\n", fp_req);
+        } else if (strncmp(line, "COUNT =", 7) == 0) {
             fputs(line, fp_req);
-        }
-        if (strncmp(line, "KEY =", 5) == 0) {
+        } else if (strncmp(line, "KEY =", 5) == 0) {
             fputs(line, fp_req);
-        } else if (strncmp(line, "PT =", 4) == 0) {
-            fputs(line, fp_req);
-            fputs("\n", fp_req);
+        } else if (flag == 0 && strncmp(line, "PT =", 4) == 0) {
+            fputs(line, fp_req); fputs("\n", fp_req);
+        } else if (flag == 1 && strncmp(line, "CT =", 4) == 0) {
+            fputs(line, fp_req); fputs("\n", fp_req);
         } 
         // else {
         //     fprintf(stderr, "Unknown line format: %s\n", line);
@@ -210,17 +117,18 @@ void create_BlockCipher_KAT_ReqFile(const char *filename_fax, const char *filena
     free(line);
     fclose(fp_fax);
     fclose(fp_req);
-    printf("Created request file: %s\n", filename_req);
+    printf("\x1b[36m[REQ] ! Created request file: %s\x1b[0m\n", filename_req);
 }
 
-void create_BlockCipher_KAT_RspFile(const char *filename_req, const char *filename_rsp) {
+void create_BlockCipher_KAT_RspFile(BlockCipherType type, const char *filename_req, const char *filename_rsp) {
     FILE *fp_req, *fp_rsp;
     char *line;
     size_t bufsize = MAX_LINE_LENGTH;
     int is_first_key = 1;
+    int flag = 0;
 
     // Read the request file and create the response file
-    printf("[RSP] Creating response file: %s\n", filename_rsp);
+    printf("\x1b[34m[RSP] ? Creating response file: %s\x1b[0m\n", filename_rsp);
     fp_req = fopen(filename_req, "r");
     if (fp_req == NULL) {
         fprintf(stderr, "[RSP] Error opening file: %s\n", filename_req);
@@ -243,102 +151,116 @@ void create_BlockCipher_KAT_RspFile(const char *filename_req, const char *filena
         return;
     }
 
-    TestData* data = (TestData*)malloc(sizeof(TestData));
-    if (data == NULL) {
-        fprintf(stderr, "[RSP] Memory allocation error\n");
-        return;
-    }
-    memset(data, 0, sizeof(TestData));
-
     BlockCipherContext ctx;
     clear_block_cipher_ctx(&ctx);
-    // memset(&ctx, 0, sizeof(BlockCipherContext));
-    ctx.api = block_cipher_factory("AES");
+
+    char cipher_name[5];
+    sscanf(block_cipher_type_to_string(type), "%[^-]", cipher_name);
+    // printf("[RSP] Cipher name: %s\n", cipher_name);
+    ctx.api = block_cipher_factory(cipher_name);
     if (ctx.api == NULL) {
         fprintf(stderr, "[RSP] No AES API available.\n");
         free(line);
         fclose(fp_req);
         fclose(fp_rsp);
-        free_TestData(data);
         return;
     }
 
+    int key_size = 0;
+    switch (type) {
+        case BLOCK_CIPHER_AES128:
+            key_size = AES128_KEY_SIZE;
+            break;
+        case BLOCK_CIPHER_AES192:
+            key_size = AES192_KEY_SIZE;
+            break;
+        case BLOCK_CIPHER_AES256:
+            key_size = AES256_KEY_SIZE;
+            break;
+        default:
+            key_size = AES128_KEY_SIZE;
+            break;
+    }
+
+    u32 *key_u32 = (u32 *)calloc(key_size / 4, sizeof(u32));
+    if (key_u32 == NULL) {
+        fprintf(stderr, "[RSP] Memory allocation error for key_u32\n");
+        exit(EXIT_FAILURE);
+    }
+    u32 iv_u32[AES_BLOCK_SIZE / 4] = { 0, };
+    u32 data_u32[AES_BLOCK_SIZE / 4] = { 0, };
+
+    u8 *key_u8 = (u8 *)calloc(key_size, sizeof(u8));
+    if (key_u8 == NULL) {
+        fprintf(stderr, "[RSP] Memory allocation error for key_u8\n");
+        free(key_u32);
+        exit(EXIT_FAILURE);
+    }
+    u8 iv_u8[AES_BLOCK_SIZE] = { 0, };
+    u8 data_u8[AES_BLOCK_SIZE] = { 0, };
+    u8 processed_data_u8[AES_BLOCK_SIZE] = { 0, };
+
+
+    // u32 key_u32[AES128_KEY_SIZE / 4] = { 0x00, };
+    // u32 iv_u32[AES_BLOCK_SIZE / 4] = { 0x00, };
+    // u32 data_u32[AES_BLOCK_SIZE / 4] = { 0x00, };
+    
+    // u8 key_u8[AES128_KEY_SIZE] = { 0x00, };
+    // u8 iv_u8[AES_BLOCK_SIZE] = { 0x00, };
+    // u8 data_u8[AES_BLOCK_SIZE] = { 0x00, };
+    // u8 processed_data_u8[AES_BLOCK_SIZE] = { 0x00, };
+    
+    size_t key_len_u32 = 0, iv_len_u32 = 0, pt_len_u32 = 0, ct_len_u32 = 0;
+
     while (fgets(line, bufsize, fp_req)) {
+        if (strncmp(line, "[ENCRYPT]", 9) == 0) { 
+            fputs(line, fp_rsp); fputs("\n", fp_rsp); 
+        }
+        if (strncmp(line, "[DECRYPT]", 9) == 0) {
+            flag = 1; fputs("\n", fp_rsp); fputs(line, fp_rsp);
+        }
         if (strncmp(line, "COUNT =", 7) == 0) {
-            if (!is_first_key) {
-                fputc('\n', fp_rsp);
-            } is_first_key = 0;
+            if (!is_first_key) { fputc('\n', fp_rsp); } 
+            is_first_key = 0;
             fprintf(fp_rsp, "%s", line);
-        } else if (strncmp(line, "KEY =", 5) == 0) {
-            if (ctx.api->dispose) {
-                ctx.api->dispose(&ctx);
-            }
+        } 
+        
+        if (strncmp(line, "KEY =", 5) == 0) {
+            if (ctx.api->dispose) { ctx.api->dispose(&ctx); }
             // printf("[RSP] KEY: %s", line);
-            data->key_len = word_length(line + 6);
-            data->key = (u32*)malloc(data->key_len * sizeof(u32));
-            if (data->key == NULL) {
-                fprintf(stderr, "[RSP] Memory allocation error\n");
-                free(line);
-                fclose(fp_req);
-                fclose(fp_rsp);
-                free_TestData(data);
-                return;
-            }
-            parse_hexline(data->key, line + 6, data->key_len);
+            memset(key_u32, 0, sizeof(key_u32));
+            key_len_u32 = word_length(line + 6);
+            parse_hexline(key_u32, line + 6, key_len_u32);
             fputs(line, fp_rsp);
-        } else if (strncmp(line, "PT =", 4) == 0) {
-            data->pt_len = word_length(line + 5);
-            data->ct_len = word_length(line + 5);
-            data->pt = (u32*)malloc(data->pt_len * sizeof(u32));
-            if (data->pt == NULL) {
-                fprintf(stderr, "[RSP] Memory allocation error\n");
-                free(line);
-                fclose(fp_req);
-                fclose(fp_rsp);
-                free_TestData(data);
-                return;
-            }
-            parse_hexline(data->pt, line + 5, data->pt_len);
+        } else if (flag == 0 && strncmp(line, "PT =", 4) == 0) {
+            memset(data_u32, 0, sizeof(data_u32));
+            pt_len_u32 = word_length(line + 5);
+            parse_hexline(data_u32, line + 5, pt_len_u32);
             fputs(line, fp_rsp);
-        } else {
-            data->ct = (u32*)malloc(data->ct_len * sizeof(u32));
-            if (data->ct == NULL) {
-                fprintf(stderr, "[RSP] Memory allocation error\n");
-                free(line);
-                fclose(fp_req);
-                fclose(fp_rsp);
-                free_TestData(data);
-                return;
-            }
-            u8 key[AES128_KEY_SIZE] = { 0x00, };
-            u8 byte_data[AES_BLOCK_SIZE] = { 0x00, };
-            u8 encrypted_byte_data[AES_BLOCK_SIZE] = { 0x00, };
-            word2byte(data->key, key);
-            word2byte(data->pt, byte_data);
 
-
+            memset(key_u8, 0, sizeof(key_u8)); word2byte(key_u32, key_u8);            
+            memset(data_u8, 0, sizeof(data_u8)); word2byte(data_u32, data_u8);
             fprintf(fp_rsp, "CT = ");
             // Initialize AES context
             if (ctx.api->init(&ctx, 
-                              key, 
-                              data->key_len * sizeof(u32), 
-                              data->pt_len * sizeof(u32), 
+                              key_u8, 
+                              key_len_u32 * sizeof(u32), 
+                              pt_len_u32 * sizeof(u32), 
                               BLOCK_CIPHER_ENCRYPTION) != BLOCK_CIPHER_OK_INITIALIZATION) {
                 fprintf(stderr, "[RSP] AES init failed (maybe invalid block/key size)\n");
                 free(line);
                 fclose(fp_req);
                 fclose(fp_rsp);
-                free_TestData(data);
                 return;
             }
-            // memset(key, 0, sizeof(key));
+            memset(key_u8, 0, sizeof(key_u8));
 
             // Encrypt the plaintext
-            ctx.api->process_block(&ctx, byte_data, encrypted_byte_data, BLOCK_CIPHER_ENCRYPTION);
-            byte2word(encrypted_byte_data, data->ct);
-            for (size_t i = 0; i < data->ct_len; i++) {
-                fprintf(fp_rsp, "%08x", data->ct[i]);
-            } 
+            memset(processed_data_u8, 0, sizeof(processed_data_u8));
+            ctx.api->process_block(&ctx, data_u8, processed_data_u8, BLOCK_CIPHER_ENCRYPTION);
+            for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
+                fprintf(fp_rsp, "%02x", processed_data_u8[i]);
+            }
             fprintf(fp_rsp, "\n");
             if (ctx.api->dispose) {
                 ctx.api->dispose(&ctx);
@@ -348,42 +270,109 @@ void create_BlockCipher_KAT_RspFile(const char *filename_req, const char *filena
             //     printf("%08X ", data->ct[i]);
             // }
             // printf("\n");
-        }
+        } else if (flag == 1 && strncmp(line, "CT =", 4) == 0) {
+            ct_len_u32 = word_length(line + 5);
+            // printf("[RSP] CT: %s", line);
+            memset(data_u32, 0, sizeof(data_u32));
+            parse_hexline(data_u32, line + 5, ct_len_u32);
+            fputs(line, fp_rsp);
+
+            memset(key_u8, 0, sizeof(key_u8)); word2byte(key_u32, key_u8);
+            memset(data_u8, 0, sizeof(data_u8)); word2byte(data_u32, data_u8);
+            fprintf(fp_rsp, "PT = ");
+            // Initialize AES context
+            if (ctx.api->init(&ctx, 
+                              key_u8, 
+                              key_len_u32 * sizeof(u32), 
+                              ct_len_u32 * sizeof(u32), 
+                              BLOCK_CIPHER_DECRYPTION) != BLOCK_CIPHER_OK_INITIALIZATION) {
+                fprintf(stderr, "[RSP] AES init failed (maybe invalid block/key size)\n");
+                free(line);
+                fclose(fp_req);
+                fclose(fp_rsp);
+                return;
+            }
+            memset(key_u8, 0, sizeof(key_u8));
+
+            // Decrypt the ciphertext
+            memset(processed_data_u8, 0, sizeof(processed_data_u8));
+            ctx.api->process_block(&ctx, data_u8, processed_data_u8, BLOCK_CIPHER_DECRYPTION);
+            for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
+                fprintf(fp_rsp, "%02x", processed_data_u8[i]);
+            }
+            fprintf(fp_rsp, "\n");
+            if (ctx.api->dispose) {
+                ctx.api->dispose(&ctx);
+            }
+        } 
+        // else {        
+        //     printf("[RSP] Unknown line format: %s", line);
+        // }
     }
 
-    if (ctx.api->dispose) {
-        ctx.api->dispose(&ctx);
-    }
+    // // print_TestData(data);
 
-    // print_TestData(data);
-
-    free_TestData(data);
+    // free_TestData(data);
+    free(key_u32);
+    free(key_u8);
     free(line);
     fclose(fp_req);
     fclose(fp_rsp);
-    printf("Created response file: %s\n", filename_rsp);
+    printf("\x1b[36m[RSP] ! Created response file: %s\x1b[0m\n", filename_rsp);
 }
 
-void KAT_TEST_BLOCKCIPHER_AES(void) {
-    // Current working directory: ../CryptoModule
-    const char* file_path = "./testvectors/block_cipher_tv/nist_aes/";
+void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
+    const char* file_path;
+    if (type == BLOCK_CIPHER_AES128 || type == BLOCK_CIPHER_AES192 || type == BLOCK_CIPHER_AES256) {
+        file_path = "./testvectors/block_cipher_tv/nist_aes/";
+    } else if (type == BLOCK_CIPHER_ARIA128 || type == BLOCK_CIPHER_ARIA192 || type == BLOCK_CIPHER_ARIA256) {
+        file_path = "./testvectors/block_cipher_tv/kisa_aria/";
+    } else if (type == BLOCK_CIPHER_LEA128 || type == BLOCK_CIPHER_LEA192 || type == BLOCK_CIPHER_LEA256) {
+        file_path = "./testvectors/block_cipher_tv/kisa_lea/";
+    } else {
+        fprintf(stderr, "[VERIFY] Unknown BlockCipherType: %d\n", type);
+        return;
+    }
+
     char filename_fax[100];
     char filename_req[100];
     char filename_rsp[100];
-
-    snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarKey128_ENC.fax");
-    snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarKey128_ENC.req");
-    snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarKey128_ENC.rsp");
-
-
-    create_BlockCipher_KAT_ReqFile(filename_fax, filename_req);
-    create_BlockCipher_KAT_RspFile(filename_req, filename_rsp);
-
-    printf("\n START: KAT_TEST_BLOCKCIPHER_AES\n");
-    printf("  Request file: %s\n", filename_req);
-    printf("  Response file: %s\n", filename_rsp);
-    printf("  Test data file: %s\n", filename_fax);
     
+    if (type == BLOCK_CIPHER_AES128) {
+        // snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarKey128.fax");
+        // snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarKey128.req");
+        // snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarKey128.rsp");
+        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarTxt128.fax");
+        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarTxt128.req");
+        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarTxt128.rsp");
+    } else if (type == BLOCK_CIPHER_AES192) {
+        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarKey192.fax");
+        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarKey192.req");
+        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarKey192.rsp");
+        // snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarTxt192.fax");
+        // snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarTxt192.req");
+        // snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarTxt192.rsp");
+    } else if (type == BLOCK_CIPHER_AES256) {
+        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarKey256.fax");
+        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarKey256.req");
+        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarKey256.rsp");
+        // snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarTxt256.fax");
+        // snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarTxt256.req");
+        // snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarTxt256.rsp");
+    } else {
+        fprintf(stderr, "[VERIFY] Unknown BlockCipherType: %d\n", type);
+        return;
+    }
+
+    printf("\x1b[45m\x1b[01m--------------------------------- KAT TEST for %s ---------------------------------\x1b[49m\x1b[0m\n", block_cipher_type_to_string(type));
+    
+    create_BlockCipher_KAT_ReqFile(type, filename_fax, filename_req);
+    create_BlockCipher_KAT_RspFile(type, filename_req, filename_rsp);
+
+    printf("\n\x1b[32m[PATH] Test vector file : %s\n", filename_fax);
+    printf("[PATH] Request file     : %s\n", filename_req);
+    printf("[PATH] Response file    : %s\x1b[0m\n", filename_rsp);
+
     FILE* fp_fax = fopen(filename_fax, "r");
     if (fp_fax == NULL) {
         fprintf(stderr, "[VERIFY] Error opening file: %s\n", filename_req);
@@ -394,94 +383,73 @@ void KAT_TEST_BLOCKCIPHER_AES(void) {
         fprintf(stderr, "[VERIFY] Error opening file: %s\n", filename_rsp);
         fclose(fp_fax);
         return;
-    }
+    }   
 
-    TestData* data_fax = (TestData*)malloc(sizeof(TestData));
-    TestData* data_rsp = (TestData*)malloc(sizeof(TestData));
-    
-    if (data_fax == NULL || data_rsp == NULL) {
-        fprintf(stderr, "Memory allocation error\n");
-        if (data_fax) free(data_fax);
-        if (data_rsp) free(data_rsp);
-        fclose(fp_fax);
-        fclose(fp_rsp);
-        return;
-    }
-
-    memset(data_fax, 0, sizeof(TestData));
-    memset(data_rsp, 0, sizeof(TestData));
-    
     bool result = true;
     int i = 0;
-    int total_tests = 128;
+    int total_tests = 256;
     int passed_tests = 0;
 
-    printf("\nVerifying test vectors...\n");
+    const char spinner[] = {'-', '\\', '|', '/'};
+    int spinner_index = 0;
 
-    while (i < total_tests) {
-        memset(data_fax, 0, sizeof(TestData));
-        memset(data_rsp, 0, sizeof(TestData));
 
-        if (!read_TestData(fp_fax, data_fax) || !read_TestData(fp_rsp, data_rsp)) {
-            fprintf(stderr, "Error reading test data at vector %d\n", i + 1);
-            result = false;
-            break;
+    printf("\n\n");
+
+    // clear_block_cipher_test_data(data_fax);
+    // clear_block_cipher_test_data(data_rsp);
+
+    char line_fax[MAX_LINE_LENGTH];
+    char line_rsp[MAX_LINE_LENGTH];
+
+    printf("\r\x1b[35m[%c] Verifying test vector... \n", spinner[spinner_index]);
+    int line_number = 0;
+    while (fgets(line_fax, MAX_LINE_LENGTH, fp_fax) && fgets(line_rsp, MAX_LINE_LENGTH, fp_rsp)) {
+        line_number++;
+
+        // Remove trailing newline characters
+        line_fax[strcspn(line_fax, "\r\n")] = '\0';
+        line_rsp[strcspn(line_rsp, "\r\n")] = '\0';
+
+        // Skip blank lines in both files
+        if (strcmp(line_fax, "") == 0 && strcmp(line_rsp, "") == 0) {
+            continue;
         }
 
-        if (!compare_TestData(data_fax, data_rsp)) {
-            fprintf(stderr, "\nTest vector %d failed verification\n", i + 1);
-            printf("[%d-th Error!!!]\n", i);
-            printf("Expected Key: ");
-            for (size_t j = 0; j < data_fax->key_len; j++) {
-                printf("%08x", data_fax->key[j]);
-            }
-            printf("\nActual Key  : ");
-            for (size_t j = 0; j < data_rsp->key_len; j++) {
-                printf("%08x", data_rsp->key[j]);
-            }
-            printf("\nExpected PT : ");
-            for (size_t j = 0; j < data_fax->pt_len; j++) {
-                printf("%08x", data_fax->pt[j]);
-            }
-            printf("\nActual PT   : ");
-            for (size_t j = 0; j < data_rsp->pt_len; j++) {
-                printf("%08x", data_rsp->pt[j]);
-            }
-            printf("\nExpected CT : ");
-            for (size_t j = 0; j < data_fax->ct_len; j++) {
-                printf("%08x", data_fax->ct[j]);
-            }
-            printf("\nActual CT   : ");
-            for (size_t j = 0; j < data_rsp->ct_len; j++) {
-                printf("%08x", data_rsp->ct[j]);
-            }
-            
+        // Process only lines starting with COUNT, KEY, PT, or CT
+        if (strncmp(line_fax, "COUNT =", 7) == 0 || strncmp(line_fax, "KEY =", 5) == 0 ||
+            strncmp(line_fax, "PT =", 4) == 0 || strncmp(line_fax, "CT =", 4) == 0) {
+            // printf("[VERIFY] Line %d\nFAX: %s\nRSP: %s\n", line_number, line_fax, line_rsp);
 
-            // printf("Expected: "); print_TestData(data_fax);
-            // printf("Actual  : "); print_TestData(data_rsp);
-            result = false;
-            break;
+            if (strcmp(line_fax, line_rsp) != 0) {
+                fprintf(stderr, "\n\x1b[01m\x1b[41m[%04d Line] Mismatch found:\x1b[49m\n\x1b[32mFAX: %s\n\x1b[31mRSP: %s\x1b[0m\n", line_number, line_fax, line_rsp);
+                result = false;
+                break;
+            }
+            i++;
         }
 
-        // usleep(50000); // Sleep for 50 milliseconds to slow down the progress bar
-        // usleep(10000); // Sleep for 10 milliseconds to slow down the progress bar
+        // usleep(10000); // Sleep for 10 milliseconds
+        // usleep(50000);
 
-
-        free_TestData(data_fax);
-        free_TestData(data_rsp);
-        passed_tests++;
-        i++;
-        
-        progress_bar(i, total_tests);
+        if (strncmp(line_fax, "KEY =", 5) == 0) {
+            passed_tests++;
+        }
+        // printf("\r\x1b[35m[%c] Verifying test vector... (%d/%d)\r", spinner[spinner_index], passed_tests, total_tests);
+        progress_bar(passed_tests, total_tests);
+        spinner_index = (spinner_index + 1) % 4;
         fflush(stdout);
     }
 
-    printf("\n\nTest Results:\n");
-    printf("Total vectors: %d\n", total_tests);
-    printf("Passed vectors: %d\n", passed_tests);
-    printf("Result: %s\n\n", result ? "PASSED" : "FAILED");
+    printf("\n\n\x1b[33m[*] Test Results:\n");
+    printf("- Total vectors: %d\n", total_tests);
+    printf("- Passed vectors: %d\x1b[0m\n", passed_tests);
+    printf("%s\n\n", result ? "\x1b[36m[O] Result: PASSED" : "\x1b[31m[X] Result: FAILED");
+    puts("\x1b[0m");
 
     // Cleanup
     fclose(fp_fax);
     fclose(fp_rsp);
+    printf("\x1b[45m\x1b[01m----------------------------------------- END ------------------------------------------\x1b[49m\x1b[0m\n");
+    printf("\n\n");
 }

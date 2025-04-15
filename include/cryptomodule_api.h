@@ -45,7 +45,7 @@ cryptomodule_status_t cryptomodule_cleanup(void);
 #include "block_cipher/block_cipher_aes.h"
 
 /* Modes of operation */
-#include "mode/mode.h"
+#include "mode/mode_api.h"
 // #include "ecb.h"
 // #include "cbc.h"
 // #include "ctr.h"

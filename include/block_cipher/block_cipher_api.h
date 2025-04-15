@@ -44,6 +44,18 @@ extern "C" {
 #define LEA128_NUM_ROUNDS   24    /* LEA-128 number of rounds   */
 #define LEA192_NUM_ROUNDS   28    /* LEA-192 number of rounds   */
 #define LEA256_NUM_ROUNDS   32    /* LEA-256 number of rounds   */
+typedef enum {
+    BLOCK_CIPHER_AES128 = 0xAE5128,   // Identifier for AES-128
+    BLOCK_CIPHER_AES192 = 0xAE5192,   // Identifier for AES-192
+    BLOCK_CIPHER_AES256 = 0xAE5256,   // Identifier for AES-256
+    BLOCK_CIPHER_ARIA128 = 0xA21A128, // Identifier for ARIA-128
+    BLOCK_CIPHER_ARIA192 = 0xA21A192, // Identifier for ARIA-192
+    BLOCK_CIPHER_ARIA256 = 0xA21A256, // Identifier for ARIA-256
+    BLOCK_CIPHER_LEA128 = 0x1EA128,   // Identifier for LEA-128
+    BLOCK_CIPHER_LEA192 = 0x1EA192,   // Identifier for LEA-192
+    BLOCK_CIPHER_LEA256 = 0x1EA256,   // Identifier for LEA-256
+    BLOCK_CIPHER_UNKNOWN = 0x00 // Default unknown type
+} BlockCipherType;
 
 /**
  * @brief Block cipher direction enumeration.
@@ -54,38 +66,37 @@ typedef enum {
     BLOCK_CIPHER_DECRYPTION = 0xD  // Decryption mode
 } BlockCipherDirection;
 
-typedef enum {
-    BLOCK_CIPHER_AES = 0xAE5,   // Identifier for AES
-    BLOCK_CIPHER_ARIA = 0xA21A, // Identifier for ARIA
-    BLOCK_CIPHER_LEA = 0x1EA,   // Identifier for LEA
-    BLOCK_CIPHER_UNKNOWN = 0x00 // Default unknown type
-} BlockCipherType;
-
 /**
  * @brief Converts a BlockCipherType to its corresponding string representation.
  * @param type The BlockCipherType value.
- * @return A string representing the cipher type (e.g., "AES", "ARIA", "LEA").
+ * @return A string representing the cipher type (e.g., "AES-128", "ARIA-256").
  */
-static inline const char* block_cipher_type_to_string(BlockCipherType type) {
+static inline const char *block_cipher_type_to_string(BlockCipherType type) {
     switch (type) {
-        case BLOCK_CIPHER_AES: return "AES";
-        case BLOCK_CIPHER_ARIA: return "ARIA";
-        case BLOCK_CIPHER_LEA: return "LEA";
+        case BLOCK_CIPHER_AES128: return "AES-128";
+        case BLOCK_CIPHER_AES192: return "AES-192";
+        case BLOCK_CIPHER_AES256: return "AES-256";
+        case BLOCK_CIPHER_ARIA128: return "ARIA-128";
+        case BLOCK_CIPHER_ARIA192: return "ARIA-192";
+        case BLOCK_CIPHER_ARIA256: return "ARIA-256";
+        case BLOCK_CIPHER_LEA128: return "LEA-128";
+        case BLOCK_CIPHER_LEA192: return "LEA-192";
+        case BLOCK_CIPHER_LEA256: return "LEA-256";
         default: return "UNKNOWN";
     }
 }
 
-/**
- * @brief Converts a string to its corresponding BlockCipherType.
- * @param name The string representation of the cipher type (e.g., "AES", "ARIA", "LEA").
- * @return The corresponding BlockCipherType value, or BLOCK_CIPHER_UNKNOWN if not recognized.
- */
-static inline BlockCipherType string_to_block_cipher_type(const char* name) {
-    if (strcmp(name, "AES") == 0) return BLOCK_CIPHER_AES;
-    if (strcmp(name, "ARIA") == 0) return BLOCK_CIPHER_ARIA;
-    if (strcmp(name, "LEA") == 0) return BLOCK_CIPHER_LEA;
-    return BLOCK_CIPHER_UNKNOWN;
-}
+// /**
+//  * @brief Converts a string to its corresponding BlockCipherType.
+//  * @param name The string representation of the cipher type (e.g., "AES", "ARIA", "LEA").
+//  * @return The corresponding BlockCipherType value, or BLOCK_CIPHER_UNKNOWN if not recognized.
+//  */
+// static inline BlockCipherType string_to_block_cipher_type(const char* name) {
+//     if (strcmp(name, "AES") == 0) return BLOCK_CIPHER_AES;
+//     if (strcmp(name, "ARIA") == 0) return BLOCK_CIPHER_ARIA;
+//     if (strcmp(name, "LEA") == 0) return BLOCK_CIPHER_LEA;
+//     return BLOCK_CIPHER_UNKNOWN;
+// }
 
 /**
  * @brief Block cipher status enumeration.
@@ -207,7 +218,7 @@ typedef union __CipherInternal__ {
  *          encryption and decryption operations.
  */
 struct BlockCipherContext {
-    const BlockCipherApi* api;  
+    const BlockCipherApi *api;  
     CipherInternal internal_data; /* Generic internal state for any cipher */
 };
 
@@ -221,7 +232,7 @@ static inline void clear_block_cipher_ctx(BlockCipherContext *ctx) {
  * @return Pointer to the BlockCipherApi structure for the specified cipher, or NULL if not found.
  * @details This function is used to create a block cipher API based on the specified name.
  */
-const BlockCipherApi* block_cipher_factory(const char *name);
+const BlockCipherApi *block_cipher_factory(const char *name);
 
 /**
  * @brief Factory function to create a block cipher API.
@@ -232,14 +243,6 @@ const BlockCipherApi* block_cipher_factory(const char *name);
  *          different ciphers without changing the code that uses them.
  */
 void print_cipher_internal(const BlockCipherContext* ctx, const char* cipher_type);
-
-/* For usage:
- *   BlockCipherContext ctx;
- *   ctx.api = &AES_API; // or ARIA_API, LEA_API, etc.
- *   ctx.internal_data.aes_internal.block_size = 16; // for AES
- *   ctx.internal_data.aes_internal.key_len = 16; // for AES-128
- *   ...
- */
 
 #ifdef __cplusplus
 }
