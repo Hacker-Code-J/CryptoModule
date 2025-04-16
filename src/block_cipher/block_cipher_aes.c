@@ -10,7 +10,7 @@
 #include "../../include/block_cipher/block_cipher_aes.h"
 
 /* Forward declarations of static functions. */
-static block_cipher_status_t aes_init(BlockCipherContext *ctx, const u8 *key, size_t key_len, size_t block_size, BlockCipherDirection dir);
+static block_cipher_status_t aes_init(BlockCipherContext *ctx, const u8 *key, size_t key_len, size_t block_len, BlockCipherDirection dir);
 static block_cipher_status_t aes_process_block(BlockCipherContext *ctx, const u8 *in, u8 *out, BlockCipherDirection dir);
 static void aes_dispose(BlockCipherContext *ctx);
 
@@ -149,14 +149,14 @@ block_cipher_status_t aes_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk) 
     return BLOCK_CIPHER_OK_KEY_EXPANSION;
 }
 
-block_cipher_status_t aes_init(BlockCipherContext *ctx, const u8 *key, size_t block_size, size_t key_len, BlockCipherDirection dir) {
+block_cipher_status_t aes_init(BlockCipherContext *ctx, const u8 *key, size_t key_len, size_t block_len, BlockCipherDirection dir) {
     if (!ctx || !key) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
-    if (block_size != AES_BLOCK_SIZE) return BLOCK_CIPHER_ERR_INVALID_BLOCK_SIZE;
+    if (block_len != AES_BLOCK_SIZE) return BLOCK_CIPHER_ERR_INVALID_BLOCK_SIZE;
     if (key_len != AES128_KEY_SIZE && 
         key_len != AES192_KEY_SIZE && 
         key_len != AES256_KEY_SIZE) return BLOCK_CIPHER_ERR_INVALID_KEY_SIZE;
 
-    ctx->internal_data.aes_internal.block_size = block_size;
+    ctx->internal_data.aes_internal.block_size = block_len;
     ctx->internal_data.aes_internal.key_len = key_len;
     switch(key_len) {
         case AES128_KEY_SIZE: ctx->internal_data.aes_internal.nr = AES128_NUM_ROUNDS; break;

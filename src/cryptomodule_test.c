@@ -60,7 +60,7 @@ size_t word_length(const char *string) {
 
 void write_data(FILE *fp, const u32 *data, size_t length) {
     for (size_t i = 0; i < length; i++) {
-        fprintf(fp, "%08X", data[i]);
+        fprintf(fp, "%08x", data[i]);
     }
     fprintf(fp, "\n");
 }
@@ -71,7 +71,7 @@ void create_BlockCipher_KAT_ReqFile(BlockCipherType type, const char *filename_f
     size_t bufsize = MAX_LINE_LENGTH;
     int flag = 0;
 
-    printf("\x1b[34m[REQ] ? Creating request file: %s\x1b[0m\n", filename_req);
+    printf("\x1b[34m[REQ] ? Creating request file : %s\x1b[0m\n", filename_req);
     fp_fax = fopen(filename_fax, "r");
     if (fp_fax == NULL) {
         fprintf(stderr, "[REQ] Error opening file: %s\n", filename_fax);
@@ -117,7 +117,7 @@ void create_BlockCipher_KAT_ReqFile(BlockCipherType type, const char *filename_f
     free(line);
     fclose(fp_fax);
     fclose(fp_req);
-    printf("\x1b[36m[REQ] ! Created request file: %s\x1b[0m\n", filename_req);
+    printf("\x1b[36m[REQ] ! Created request file  : %s\x1b[0m\n", filename_req);
 }
 
 void create_BlockCipher_KAT_RspFile(BlockCipherType type, const char *filename_req, const char *filename_rsp) {
@@ -190,25 +190,15 @@ void create_BlockCipher_KAT_RspFile(BlockCipherType type, const char *filename_r
     u32 iv_u32[AES_BLOCK_SIZE / 4] = { 0, };
     u32 data_u32[AES_BLOCK_SIZE / 4] = { 0, };
 
-    u8 *key_u8 = (u8 *)calloc(key_size, sizeof(u8));
-    if (key_u8 == NULL) {
+    u8 *key = (u8*)calloc(key_size, sizeof(u8));
+    if (key == NULL) {
         fprintf(stderr, "[RSP] Memory allocation error for key_u8\n");
         free(key_u32);
         exit(EXIT_FAILURE);
     }
-    u8 iv_u8[AES_BLOCK_SIZE] = { 0, };
-    u8 data_u8[AES_BLOCK_SIZE] = { 0, };
-    u8 processed_data_u8[AES_BLOCK_SIZE] = { 0, };
-
-
-    // u32 key_u32[AES128_KEY_SIZE / 4] = { 0x00, };
-    // u32 iv_u32[AES_BLOCK_SIZE / 4] = { 0x00, };
-    // u32 data_u32[AES_BLOCK_SIZE / 4] = { 0x00, };
-    
-    // u8 key_u8[AES128_KEY_SIZE] = { 0x00, };
-    // u8 iv_u8[AES_BLOCK_SIZE] = { 0x00, };
-    // u8 data_u8[AES_BLOCK_SIZE] = { 0x00, };
-    // u8 processed_data_u8[AES_BLOCK_SIZE] = { 0x00, };
+    u8 iv[AES_BLOCK_SIZE] = { 0, };
+    u8 data[AES_BLOCK_SIZE] = { 0, };
+    u8 processed_data[AES_BLOCK_SIZE] = { 0, };
     
     size_t key_len_u32 = 0, iv_len_u32 = 0, pt_len_u32 = 0, ct_len_u32 = 0;
 
@@ -228,7 +218,7 @@ void create_BlockCipher_KAT_RspFile(BlockCipherType type, const char *filename_r
         if (strncmp(line, "KEY =", 5) == 0) {
             if (ctx.api->dispose) { ctx.api->dispose(&ctx); }
             // printf("[RSP] KEY: %s", line);
-            memset(key_u32, 0, sizeof(key_u32));
+            // memset(key_u32, 0, sizeof(key_u32));
             key_len_u32 = word_length(line + 6);
             parse_hexline(key_u32, line + 6, key_len_u32);
             fputs(line, fp_rsp);
@@ -238,28 +228,31 @@ void create_BlockCipher_KAT_RspFile(BlockCipherType type, const char *filename_r
             parse_hexline(data_u32, line + 5, pt_len_u32);
             fputs(line, fp_rsp);
 
-            memset(key_u8, 0, sizeof(key_u8)); word2byte(key_u32, key_u8);            
-            memset(data_u8, 0, sizeof(data_u8)); word2byte(data_u32, data_u8);
+            // memset(key_u8, 0, sizeof(key_u8)); 
+            word2byte(key_u32, key);            
+            memset(data, 0, sizeof(data)); word2byte(data_u32, data);
             fprintf(fp_rsp, "CT = ");
             // Initialize AES context
             if (ctx.api->init(&ctx, 
-                              key_u8, 
+                              key, 
                               key_len_u32 * sizeof(u32), 
                               pt_len_u32 * sizeof(u32), 
                               BLOCK_CIPHER_ENCRYPTION) != BLOCK_CIPHER_OK_INITIALIZATION) {
-                fprintf(stderr, "[RSP] AES init failed (maybe invalid block/key size)\n");
+                fprintf(stderr, "[RSP] AES init failed (maybe invalid key/block length)\n");
+                printf("[RSP] Key   Length (byte): %ld\n", key_len_u32 * sizeof(u32));
+                printf("[RSP] Block Length (byte): %ld\n", pt_len_u32 * sizeof(u32));
                 free(line);
                 fclose(fp_req);
                 fclose(fp_rsp);
                 return;
             }
-            memset(key_u8, 0, sizeof(key_u8));
+            // memset(key_u8, 0, sizeof(key_u8));
 
             // Encrypt the plaintext
-            memset(processed_data_u8, 0, sizeof(processed_data_u8));
-            ctx.api->process_block(&ctx, data_u8, processed_data_u8, BLOCK_CIPHER_ENCRYPTION);
+            memset(processed_data, 0, sizeof(processed_data));
+            ctx.api->process_block(&ctx, data, processed_data, BLOCK_CIPHER_ENCRYPTION);
             for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
-                fprintf(fp_rsp, "%02x", processed_data_u8[i]);
+                fprintf(fp_rsp, "%02x", processed_data[i]);
             }
             fprintf(fp_rsp, "\n");
             if (ctx.api->dispose) {
@@ -277,12 +270,12 @@ void create_BlockCipher_KAT_RspFile(BlockCipherType type, const char *filename_r
             parse_hexline(data_u32, line + 5, ct_len_u32);
             fputs(line, fp_rsp);
 
-            memset(key_u8, 0, sizeof(key_u8)); word2byte(key_u32, key_u8);
-            memset(data_u8, 0, sizeof(data_u8)); word2byte(data_u32, data_u8);
+            memset(key, 0, sizeof(key)); word2byte(key_u32, key);
+            memset(data, 0, sizeof(data)); word2byte(data_u32, data);
             fprintf(fp_rsp, "PT = ");
             // Initialize AES context
             if (ctx.api->init(&ctx, 
-                              key_u8, 
+                              key, 
                               key_len_u32 * sizeof(u32), 
                               ct_len_u32 * sizeof(u32), 
                               BLOCK_CIPHER_DECRYPTION) != BLOCK_CIPHER_OK_INITIALIZATION) {
@@ -292,13 +285,13 @@ void create_BlockCipher_KAT_RspFile(BlockCipherType type, const char *filename_r
                 fclose(fp_rsp);
                 return;
             }
-            memset(key_u8, 0, sizeof(key_u8));
+            memset(key, 0, sizeof(key));
 
             // Decrypt the ciphertext
-            memset(processed_data_u8, 0, sizeof(processed_data_u8));
-            ctx.api->process_block(&ctx, data_u8, processed_data_u8, BLOCK_CIPHER_DECRYPTION);
+            memset(processed_data, 0, sizeof(processed_data));
+            ctx.api->process_block(&ctx, data, processed_data, BLOCK_CIPHER_DECRYPTION);
             for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
-                fprintf(fp_rsp, "%02x", processed_data_u8[i]);
+                fprintf(fp_rsp, "%02x", processed_data[i]);
             }
             fprintf(fp_rsp, "\n");
             if (ctx.api->dispose) {
@@ -314,11 +307,11 @@ void create_BlockCipher_KAT_RspFile(BlockCipherType type, const char *filename_r
 
     // free_TestData(data);
     free(key_u32);
-    free(key_u8);
+    free(key);
     free(line);
     fclose(fp_req);
     fclose(fp_rsp);
-    printf("\x1b[36m[RSP] ! Created response file: %s\x1b[0m\n", filename_rsp);
+    printf("\x1b[36m[RSP] ! Created response file : %s\x1b[0m\n", filename_rsp);
 }
 
 void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
@@ -390,7 +383,8 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
     int total_tests = 256;
     int passed_tests = 0;
 
-    const char spinner[] = {'-', '\\', '|', '/'};
+    // Spinner characters for visualizing processing progress
+    const char *spinner[] = {"|", "/", "-", "\\", "|", "/", "-", "\\"};
     int spinner_index = 0;
 
 
@@ -402,7 +396,7 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
     char line_fax[MAX_LINE_LENGTH];
     char line_rsp[MAX_LINE_LENGTH];
 
-    printf("\r\x1b[35m[%c] Verifying test vector... \n", spinner[spinner_index]);
+    // printf("\r\x1b[35m[%c] Verifying test vector... \n", spinner[spinner_index]);
     int line_number = 0;
     while (fgets(line_fax, MAX_LINE_LENGTH, fp_fax) && fgets(line_rsp, MAX_LINE_LENGTH, fp_rsp)) {
         line_number++;
@@ -422,28 +416,29 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
             // printf("[VERIFY] Line %d\nFAX: %s\nRSP: %s\n", line_number, line_fax, line_rsp);
 
             if (strcmp(line_fax, line_rsp) != 0) {
-                fprintf(stderr, "\n\x1b[01m\x1b[41m[%04d Line] Mismatch found:\x1b[49m\n\x1b[32mFAX: %s\n\x1b[31mRSP: %s\x1b[0m\n", line_number, line_fax, line_rsp);
+                fprintf(stderr, "\n\x1b[01m\x1b[41m[%4d Line] Mismatch found:\x1b[49m\n\x1b[32mFAX: %s\n\x1b[31mRSP: %s\x1b[0m\n", line_number, line_fax, line_rsp);
                 result = false;
                 break;
             }
             i++;
         }
 
+        usleep(5000);
         // usleep(10000); // Sleep for 10 milliseconds
         // usleep(50000);
 
         if (strncmp(line_fax, "KEY =", 5) == 0) {
             passed_tests++;
         }
-        // printf("\r\x1b[35m[%c] Verifying test vector... (%d/%d)\r", spinner[spinner_index], passed_tests, total_tests);
-        progress_bar(passed_tests, total_tests);
-        spinner_index = (spinner_index + 1) % 4;
+        printf("\r\x1b[35m[%s] Verifying test vector... (%3d/%3d)\r", spinner[spinner_index], passed_tests, total_tests);
+        // progress_bar(passed_tests, total_tests);
+        spinner_index = (spinner_index + 1) % 8;
         fflush(stdout);
     }
 
     printf("\n\n\x1b[33m[*] Test Results:\n");
-    printf("- Total vectors: %d\n", total_tests);
-    printf("- Passed vectors: %d\x1b[0m\n", passed_tests);
+    printf("- Total vectors : %3d\n", total_tests);
+    printf("- Passed vectors: %3d\x1b[0m\n", passed_tests);
     printf("%s\n\n", result ? "\x1b[36m[O] Result: PASSED" : "\x1b[31m[X] Result: FAILED");
     puts("\x1b[0m");
 

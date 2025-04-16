@@ -149,13 +149,13 @@ typedef struct __BlockCipherApi__ {
     /**
      * @brief Initialize the block cipher context.
      * @param ctx Pointer to the context to be initialized.
-     * @param block_size Size of the block (e.g., 16 for AES).
      * @param key Pointer to the key.
      * @param key_len Length of the key in bytes.
+     * @param block_len Length of the block in bytes.
      * @param dir Direction of the cipher (ENCRYPTION_MODE or DECRYPTION_MODE).
      * @return Status of the initialization (BLOCK_CIPHER_OK or error code).
      */
-    block_cipher_status_t (*init)(BlockCipherContext* ctx, const u8* key, size_t key_len, size_t block_size, BlockCipherDirection dir);
+    block_cipher_status_t (*init)(BlockCipherContext* ctx, const u8* key, size_t key_len, size_t block_len, BlockCipherDirection dir);
 
     /**
      * @brief Process a block of data (encrypt or decrypt).
