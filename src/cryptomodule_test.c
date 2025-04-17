@@ -423,15 +423,15 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
             i++;
         }
 
-        usleep(5000);
-        // usleep(10000); // Sleep for 10 milliseconds
+        // usleep(5000);
+        usleep(10000); // Sleep for 10 milliseconds
         // usleep(50000);
 
         if (strncmp(line_fax, "KEY =", 5) == 0) {
             passed_tests++;
         }
-        printf("\r\x1b[35m[%s] Verifying test vector... (%3d/%3d)\r", spinner[spinner_index], passed_tests, total_tests);
-        // progress_bar(passed_tests, total_tests);
+        // printf("\r\x1b[35m[%s] Verifying test vector... (%3d/%3d)\r", spinner[spinner_index], passed_tests, total_tests);
+        progress_bar(passed_tests, total_tests);
         spinner_index = (spinner_index + 1) % 8;
         fflush(stdout);
     }
