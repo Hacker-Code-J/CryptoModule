@@ -68,22 +68,97 @@ const BlockCipherApi *get_aes_api(void) { return &AES_API; }
 
 block_cipher_status_t aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk) {
     if (!key || !rk) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
-    if (bytes != AES128_KEY_SIZE && 
-        bytes != AES192_KEY_SIZE && 
-        bytes != AES256_KEY_SIZE) return BLOCK_CIPHER_ERR_INVALID_KEY_SIZE;
     
+    int i = 0;
     u32 temp;
-    size_t i, n;
 
-    n = bytes / 4;
-
-    for (i = 0; i < n; i++) { rk[i] = GETU32(key + (i * 4)); }
-    for (i = n; i < ((n + 6) + 1) * 4; i++) {
-        temp = rk[i - 1];
-        if (i % n == 0) { temp = sub_word(rotate_word(temp)) ^ rcon[i / n - 1]; } 
-        else if ((n > 6) && (i % n == 4)) { temp = sub_word(temp); }
-        rk[i] = rk[i - n] ^ temp;
+    rk[0] = GETU32(key     );
+    rk[1] = GETU32(key +  4);
+    rk[2] = GETU32(key +  8);
+    rk[3] = GETU32(key + 12);
+    if (bytes == AES128_KEY_SIZE) {
+        while (1) {
+            temp  = rk[3];
+            rk[4] = rk[0] ^
+                (Te2[(temp >> 16) & 0xff] & 0xff000000) ^
+                (Te3[(temp >>  8) & 0xff] & 0x00ff0000) ^
+                (Te0[(temp      ) & 0xff] & 0x0000ff00) ^
+                (Te1[(temp >> 24)       ] & 0x000000ff) ^
+                rcon[i];
+            rk[5] = rk[1] ^ rk[4];
+            rk[6] = rk[2] ^ rk[5];
+            rk[7] = rk[3] ^ rk[6];
+            if (++i == 10) {
+                return BLOCK_CIPHER_OK_KEY_EXPANSION;
+            }
+            rk += 4;
+        }
     }
+    rk[4] = GETU32(key + 16);
+    rk[5] = GETU32(key + 20);
+    if (bytes == AES192_KEY_SIZE) {
+        while (1) {
+            temp = rk[ 5];
+            rk[ 6] = rk[ 0] ^
+                (Te2[(temp >> 16) & 0xff] & 0xff000000) ^
+                (Te3[(temp >>  8) & 0xff] & 0x00ff0000) ^
+                (Te0[(temp      ) & 0xff] & 0x0000ff00) ^
+                (Te1[(temp >> 24)       ] & 0x000000ff) ^
+                rcon[i];
+            rk[ 7] = rk[ 1] ^ rk[ 6];
+            rk[ 8] = rk[ 2] ^ rk[ 7];
+            rk[ 9] = rk[ 3] ^ rk[ 8];
+            if (++i == 8) {
+                return 0;
+            }
+            rk[10] = rk[ 4] ^ rk[ 9];
+            rk[11] = rk[ 5] ^ rk[10];
+            rk += 6;
+        }
+    }
+    rk[6] = GETU32(key + 24);
+    rk[7] = GETU32(key + 28);
+    if (bytes == AES256_KEY_SIZE) {
+        while (1) {
+            temp = rk[ 7];
+            rk[ 8] = rk[ 0] ^
+                (Te2[(temp >> 16) & 0xff] & 0xff000000) ^
+                (Te3[(temp >>  8) & 0xff] & 0x00ff0000) ^
+                (Te0[(temp      ) & 0xff] & 0x0000ff00) ^
+                (Te1[(temp >> 24)       ] & 0x000000ff) ^
+                rcon[i];
+            rk[ 9] = rk[ 1] ^ rk[ 8];
+            rk[10] = rk[ 2] ^ rk[ 9];
+            rk[11] = rk[ 3] ^ rk[10];
+            if (++i == 7) {
+                return BLOCK_CIPHER_OK_KEY_EXPANSION;
+            }
+            temp = rk[11];
+            rk[12] = rk[ 4] ^
+                (Te2[(temp >> 24)       ] & 0xff000000) ^
+                (Te3[(temp >> 16) & 0xff] & 0x00ff0000) ^
+                (Te0[(temp >>  8) & 0xff] & 0x0000ff00) ^
+                (Te1[(temp      ) & 0xff] & 0x000000ff);
+            rk[13] = rk[ 5] ^ rk[12];
+            rk[14] = rk[ 6] ^ rk[13];
+            rk[15] = rk[ 7] ^ rk[14];
+
+            rk += 8;
+            }
+    }
+
+    // u32 temp;
+    // size_t i, n;
+
+    // n = bytes / 4;
+
+    // for (i = 0; i < n; i++) { rk[i] = GETU32(key + (i * 4)); }
+    // for (i = n; i < ((n + 6) + 1) * 4; i++) {
+    //     temp = rk[i - 1];
+    //     if (i % n == 0) { temp = sub_word(rotate_word(temp)) ^ rcon[i / n - 1]; } 
+    //     else if ((n > 6) && (i % n == 4)) { temp = sub_word(temp); }
+    //     rk[i] = rk[i - n] ^ temp;
+    // }
 
     // printf("Encryption Key Schedule:\n");
     // for (i=0; i < ((n + 6) + 1) * 4; i++) {
@@ -95,9 +170,6 @@ block_cipher_status_t aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk) 
 
 block_cipher_status_t aes_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk) {
     if (!key || !rk) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
-    if (bytes != AES128_KEY_SIZE && 
-        bytes != AES192_KEY_SIZE && 
-        bytes != AES256_KEY_SIZE) return BLOCK_CIPHER_ERR_INVALID_KEY_SIZE;
     
     int i, j, nr;
     u32 temp;

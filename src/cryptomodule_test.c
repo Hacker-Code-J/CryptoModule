@@ -203,6 +203,7 @@ void create_BlockCipher_KAT_RspFile(BlockCipherType type, const char *filename_r
     size_t key_len_u32 = 0, iv_len_u32 = 0, pt_len_u32 = 0, ct_len_u32 = 0;
 
     while (fgets(line, bufsize, fp_req)) {
+        printf("[RSP] %s", line);
         if (strncmp(line, "[ENCRYPT]", 9) == 0) { 
             fputs(line, fp_rsp); fputs("\n", fp_rsp); 
         }
@@ -255,6 +256,11 @@ void create_BlockCipher_KAT_RspFile(BlockCipherType type, const char *filename_r
                 fprintf(fp_rsp, "%02x", processed_data[i]);
             }
             fprintf(fp_rsp, "\n");
+            
+            printf("[RSP] CT = ");
+            for (size_t i = 0; i < AES_BLOCK_SIZE; i++)
+                printf("%02x", processed_data[i]);
+            puts("");
             if (ctx.api->dispose) {
                 ctx.api->dispose(&ctx);
             }
@@ -294,6 +300,10 @@ void create_BlockCipher_KAT_RspFile(BlockCipherType type, const char *filename_r
                 fprintf(fp_rsp, "%02x", processed_data[i]);
             }
             fprintf(fp_rsp, "\n");
+            printf("[RSP] PT = ");
+            for (size_t i = 0; i < AES_BLOCK_SIZE; i++)
+                printf("%02x", processed_data[i]);
+            puts("");
             if (ctx.api->dispose) {
                 ctx.api->dispose(&ctx);
             }
@@ -380,7 +390,14 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
 
     bool result = true;
     int i = 0;
-    int total_tests = 256;
+
+    int total_tests;
+    if (type == BLOCK_CIPHER_AES128) {
+        total_tests = 256;
+    } else if (type == BLOCK_CIPHER_AES192) {
+        total_tests = 191;
+    } else total_tests = 256;
+
     int passed_tests = 0;
 
     // Spinner characters for visualizing processing progress
@@ -424,7 +441,7 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
         }
 
         // usleep(5000);
-        usleep(10000); // Sleep for 10 milliseconds
+        // usleep(10000); // Sleep for 10 milliseconds
         // usleep(50000);
 
         if (strncmp(line_fax, "KEY =", 5) == 0) {
