@@ -11,8 +11,18 @@
 extern "C" {
 #endif
 
-#define MAX_LINE_LENGTH 1024
+#define MAX_LINE_LENGTH 3072
 #define MAX_TXT_SIZE 1024
+
+#define AES128_TEST_CASES 256
+#define AES192_TEST_CASES 384
+#define AES256_TEST_CASES 512
+#define ARIA128_TEST_CASES 256
+#define ARIA192_TEST_CASES 384
+#define ARIA256_TEST_CASES 512
+#define LEA128_TEST_CASES 256
+#define LEA192_TEST_CASES 384
+#define LEA256_TEST_CASES 512
 
 /**
  * @brief Prints a progress bar to the console.

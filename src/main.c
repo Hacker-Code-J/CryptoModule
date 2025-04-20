@@ -15,18 +15,21 @@
 int main(void) {
 
     // KAT_TEST_BLOCKCIPHER(BLOCK_CIPHER_AES128);
-    KAT_TEST_BLOCKCIPHER(BLOCK_CIPHER_AES192);
+    // KAT_TEST_BLOCKCIPHER(BLOCK_CIPHER_AES192);
+    KAT_TEST_BLOCKCIPHER(BLOCK_CIPHER_AES256);
 
 #ifdef TEST_FLAG
     /* 1) Create a context and call init */
     BlockCipherContext ctx;
     memset(&ctx, 0, sizeof(ctx));
 
+    #define key_len AES128_KEY_SIZE
+
     /* 2) Get the AES vtable. */
-    u8 key[16] = {0}; /* example all zero */
-    stringToByteArray("ffffffffffc000000000000000000000", key);
+    u8 key[key_len] = {0}; /* example all zero */
+    stringToByteArray("f8000000000000000000000000000000", key);
     printf("Key       : ");
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < key_len; i++) {
         printf("%02X ", key[i]);
     }
     printf("\n");
@@ -39,10 +42,10 @@ int main(void) {
 
     memset(&ctx, 0, sizeof(ctx));
     ctx.api = block_cipher_factory("AES");
-    ctx.api->init(&ctx, key, AES128_KEY_SIZE, AES_BLOCK_SIZE, BLOCK_CIPHER_ENCRYPTION);
+    ctx.api->init(&ctx, key, key_len, AES_BLOCK_SIZE, BLOCK_CIPHER_ENCRYPTION);
     ctx.api->process_block(&ctx, plaintext, ciphertext, BLOCK_CIPHER_ENCRYPTION);
     // ctx.api->dispose(&ctx);
-    ctx.api->init(&ctx, key, AES128_KEY_SIZE, AES_BLOCK_SIZE, BLOCK_CIPHER_DECRYPTION);
+    ctx.api->init(&ctx, key, key_len, AES_BLOCK_SIZE, BLOCK_CIPHER_DECRYPTION);
     ctx.api->process_block(&ctx, ciphertext, decrypted, BLOCK_CIPHER_DECRYPTION);
     ctx.api->dispose(&ctx);
    

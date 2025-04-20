@@ -58,15 +58,6 @@ typedef enum {
 } BlockCipherType;
 
 /**
- * @brief Block cipher direction enumeration.
- * @details This enumeration defines the direction of the block cipher operation.
- */
-typedef enum {
-    BLOCK_CIPHER_ENCRYPTION = 0xE, // Encryption mode
-    BLOCK_CIPHER_DECRYPTION = 0xD  // Decryption mode
-} BlockCipherDirection;
-
-/**
  * @brief Converts a BlockCipherType to its corresponding string representation.
  * @param type The BlockCipherType value.
  * @return A string representing the cipher type (e.g., "AES-128", "ARIA-256").
@@ -86,48 +77,26 @@ static inline const char *block_cipher_type_to_string(BlockCipherType type) {
     }
 }
 
-// /**
-//  * @brief Converts a string to its corresponding BlockCipherType.
-//  * @param name The string representation of the cipher type (e.g., "AES", "ARIA", "LEA").
-//  * @return The corresponding BlockCipherType value, or BLOCK_CIPHER_UNKNOWN if not recognized.
-//  */
-// static inline BlockCipherType string_to_block_cipher_type(const char* name) {
-//     if (strcmp(name, "AES") == 0) return BLOCK_CIPHER_AES;
-//     if (strcmp(name, "ARIA") == 0) return BLOCK_CIPHER_ARIA;
-//     if (strcmp(name, "LEA") == 0) return BLOCK_CIPHER_LEA;
-//     return BLOCK_CIPHER_UNKNOWN;
-// }
+/**
+ * @brief Block cipher direction enumeration.
+ * @details This enumeration defines the direction of the block cipher operation.
+ */
+typedef enum {
+    BLOCK_CIPHER_ENCRYPTION = 0xE, // Encryption mode
+    BLOCK_CIPHER_DECRYPTION = 0xD  // Decryption mode
+} BlockCipherDirection;
 
 /**
  * @brief Block cipher status enumeration.
- * @details This enumeration defines the status codes for block cipher operations.
+ * @details This enumeration defines the status of block cipher operations.
  */
-typedef enum {
-    BLOCK_CIPHER_OK                     = 0x00,
-    BLOCK_CIPHER_OK_INITIALIZATION      = 0x01,
-    BLOCK_CIPHER_OK_KEY_EXPANSION       = 0x02,
-    BLOCK_CIPHER_OK_ENCRYPTION          = 0x03,
-    BLOCK_CIPHER_OK_DECRYPTION          = 0x04,
-    BLOCK_CIPHER_OK_PROCESS             = 0x05,
-    BLOCK_CIPHER_OK_DISPOSE             = 0x06,
-    BLOCK_CIPHER_ERR_AES_API            = 0x10,
-    BLOCK_CIPHER_ERR_ARIA_API           = 0x11,
-    BLOCK_CIPHER_ERR_LEA_API            = 0x12,
-    BLOCK_CIPHER_ERR_INVALID_DIRECTION  = 0x1D,  // Direction error
-    BLOCK_CIPHER_ERR_INITIALIZATION     = 0x2A,  // Initialization error
-    BLOCK_CIPHER_ERR_KEY_EXPANSION      = 0x2B,  // Key expansion error
-    BLOCK_CIPHER_ERR_ENCRYPTION         = 0x2C,  // Encryption error
-    BLOCK_CIPHER_ERR_DECRYPTION         = 0x2D,  // Decryption error
-    BLOCK_CIPHER_ERR_DISPOSE            = 0x2E,  // Dispose error
-    BLOCK_CIPHER_ERR_INVALID_KEY_SIZE   = 0x30,
-    BLOCK_CIPHER_ERR_INVALID_BLOCK_SIZE = 0x31,
-    BLOCK_CIPHER_ERR_INVALID_INPUT      = 0x32,
-    BLOCK_CIPHER_ERR_INVALID_OUTPUT     = 0x33,
-    BLOCK_CIPHER_ERR_INVALID_MODE       = 0x34,
-    BLOCK_CIPHER_ERR_MEMORY_ALLOCATION  = 0x40,
-    // BLOCK_CIPHER_ERR_UNSUPPORTED_ALGORITHM,
-    // BLOCK_CIPHER_ERR_MEMORY_ALLOCATION,
-} block_cipher_status_t;
+static inline const char *block_cipher_direction_to_string(BlockCipherDirection dir) {
+    switch (dir) {
+        case BLOCK_CIPHER_ENCRYPTION: return "ENCRYPTION";
+        case BLOCK_CIPHER_DECRYPTION: return "DECRYPTION";
+        default: return "UNKNOWN";
+    }
+}
 
 /* Forward declaration for the context. */
 typedef struct BlockCipherContext BlockCipherContext;
@@ -155,7 +124,7 @@ typedef struct __BlockCipherApi__ {
      * @param dir Direction of the cipher (ENCRYPTION_MODE or DECRYPTION_MODE).
      * @return Status of the initialization (BLOCK_CIPHER_OK or error code).
      */
-    block_cipher_status_t (*init)(BlockCipherContext* ctx, const u8* key, size_t key_len, size_t block_len, BlockCipherDirection dir);
+    void (*init)(BlockCipherContext* ctx, const u8* key, size_t key_len, size_t block_len, BlockCipherDirection dir);
 
     /**
      * @brief Process a block of data (encrypt or decrypt).
@@ -165,7 +134,7 @@ typedef struct __BlockCipherApi__ {
      * @param dir Direction of the cipher (ENCRYPTION_MODE or DECRYPTION_MODE).
      * @return Status of the operation (BLOCK_CIPHER_OK or error code).
      */
-    block_cipher_status_t (*process_block)(BlockCipherContext* ctx, const u8* in, u8* out, BlockCipherDirection dir);
+    void (*process_block)(BlockCipherContext* ctx, const u8* in, u8* out, BlockCipherDirection dir);
 
     /**
      * @brief Dispose of the block cipher context.

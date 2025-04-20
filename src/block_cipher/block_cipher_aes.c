@@ -10,41 +10,14 @@
 #include "../../include/block_cipher/block_cipher_aes.h"
 
 /* Forward declarations of static functions. */
-static block_cipher_status_t aes_init(BlockCipherContext *ctx, const u8 *key, size_t key_len, size_t block_len, BlockCipherDirection dir);
-static block_cipher_status_t aes_process_block(BlockCipherContext *ctx, const u8 *in, u8 *out, BlockCipherDirection dir);
+static void aes_init(BlockCipherContext *ctx, const u8 *key, size_t key_len, size_t block_len, BlockCipherDirection dir);
+static void aes_process_block(BlockCipherContext *ctx, const u8 *in, u8 *out, BlockCipherDirection dir);
 static void aes_dispose(BlockCipherContext *ctx);
 
-
-// static block_cipher_status_t aes_process_single_block(BlockCipherContext *ctx, const u8 *key, size_t key_len, const u8 *input, u8 *output, int encrypt) {
-
-// /**
-//  * @brief AES encryption/decryption function for a single block.
-//  * @param ctx Pointer to the block cipher context.
-//  * @param key Pointer to the key.
-//  * @param key_len Length of the key (AES128_KEY_SIZE, AES192_KEY_SIZE, or AES256_KEY_SIZE).
-//  * @param input Pointer to the input data buffer.
-//  * @param output Pointer to the output data buffer.
-//  * @param encrypt Flag indicating encryption (ENCRYPTION_MODE) or decryption (DECRYPTION_MODE).
-//  * @return Status of the operation.
-//  */
-// block_cipher_status_t aes_process_single_block(BlockCipherContext *ctx, const u8 *key, size_t key_len, const u8 *input, u8 *output, int encrypt) {
-//     if (!ctx || !key || !input || !output) return BLOCK_CIPHER_ERR_INVALID_INPUT;
-
-//     // Initialize the AES context
-//     block_cipher_status_t status = aes_init(ctx, AES_BLOCK_SIZE, key, key_len, encrypt);
-//     if (status != BLOCK_CIPHER_OK_INITIALIZATION) return status;
-
-//     // Process the single block
-//     status = aes_process_block(ctx, input, output, encrypt);
-//     if (status != BLOCK_CIPHER_OK_ENCRYPTION && status != BLOCK_CIPHER_OK_DECRYPTION) return status;
-
-//     return BLOCK_CIPHER_OK_PROCESS;
-// }
-
-block_cipher_status_t aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk);
-block_cipher_status_t aes_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk);
-block_cipher_status_t aes_encrypt(const u8 *in, u8 *out, const u32 *rk, int r);
-block_cipher_status_t aes_decrypt(const u8 *in, u8 *out, const u32 *rk, int r);
+void aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk);
+void aes_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk);
+void aes_encrypt(const u8 *in, u8 *out, const u32 *rk, int r);
+void aes_decrypt(const u8 *in, u8 *out, const u32 *rk, int r);
 
 /**
  * @brief The AES block cipher API.
@@ -66,9 +39,14 @@ static const BlockCipherApi AES_API = {
  */
 const BlockCipherApi *get_aes_api(void) { return &AES_API; }
 
-block_cipher_status_t aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk) {
-    if (!key || !rk) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
-    
+void aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk) {
+    if (!key || !rk) {
+        fprintf(stderr, "Invalid key or round key pointer\n");
+        return;
+    }
+
+    // printf("Setting AES encryption key...\n");
+
     int i = 0;
     u32 temp;
 
@@ -89,7 +67,7 @@ block_cipher_status_t aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk) 
             rk[6] = rk[2] ^ rk[5];
             rk[7] = rk[3] ^ rk[6];
             if (++i == 10) {
-                return BLOCK_CIPHER_OK_KEY_EXPANSION;
+                return;
             }
             rk += 4;
         }
@@ -109,7 +87,7 @@ block_cipher_status_t aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk) 
             rk[ 8] = rk[ 2] ^ rk[ 7];
             rk[ 9] = rk[ 3] ^ rk[ 8];
             if (++i == 8) {
-                return 0;
+                return;
             }
             rk[10] = rk[ 4] ^ rk[ 9];
             rk[11] = rk[ 5] ^ rk[10];
@@ -131,7 +109,7 @@ block_cipher_status_t aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk) 
             rk[10] = rk[ 2] ^ rk[ 9];
             rk[11] = rk[ 3] ^ rk[10];
             if (++i == 7) {
-                return BLOCK_CIPHER_OK_KEY_EXPANSION;
+                return;
             }
             temp = rk[11];
             rk[12] = rk[ 4] ^
@@ -165,27 +143,29 @@ block_cipher_status_t aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk) 
     //     printf("%08x:", rk[i]);
     //     if (i % 4 == 3) printf("\n");
     // }
-    return BLOCK_CIPHER_OK_KEY_EXPANSION;
+    // return BLOCK_CIPHER_OK_KEY_EXPANSION;
 }
+void aes_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk) {
+    if (!key || !rk) {
+        fprintf(stderr, "Invalid key or round key pointer\n");
+        return;
+    }
 
-block_cipher_status_t aes_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk) {
-    if (!key || !rk) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
-    
     int i, j, nr;
     u32 temp;
-    block_cipher_status_t status;
 
-    switch (bytes) {
-        case AES128_KEY_SIZE: nr = AES128_NUM_ROUNDS; break;
-        case AES192_KEY_SIZE: nr = AES192_NUM_ROUNDS; break;
-        case AES256_KEY_SIZE: nr = AES256_NUM_ROUNDS; break;
-        default: return BLOCK_CIPHER_ERR_INVALID_KEY_SIZE;
+    if (bytes == AES128_KEY_SIZE) {
+        nr = AES128_NUM_ROUNDS;
+    } else if (bytes == AES192_KEY_SIZE) {
+        nr = AES192_NUM_ROUNDS;
+    } else if (bytes == AES256_KEY_SIZE) {
+        nr = AES256_NUM_ROUNDS;
+    } else {
+        fprintf(stderr, "Invalid key length: %zu\n", bytes);
+        return;
     }
 
-    status = aes_set_encrypt_key(key, bytes, rk);
-    if (status != BLOCK_CIPHER_OK_KEY_EXPANSION) {
-        return BLOCK_CIPHER_ERR_KEY_EXPANSION;
-    }
+    aes_set_encrypt_key(key, bytes, rk);
 
     /* invert the order of round keys */
     for (i = 0, j = 4 * nr; i < j; i += 4, j -= 4) {
@@ -218,15 +198,22 @@ block_cipher_status_t aes_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk) 
             Td2[Te1[(rk[3] >>  8) & 0xff] & 0xff] ^
             Td3[Te1[(rk[3]      ) & 0xff] & 0xff];
     }
-    return BLOCK_CIPHER_OK_KEY_EXPANSION;
+    // return BLOCK_CIPHER_OK_KEY_EXPANSION;
 }
 
-block_cipher_status_t aes_init(BlockCipherContext *ctx, const u8 *key, size_t key_len, size_t block_len, BlockCipherDirection dir) {
-    if (!ctx || !key) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
-    if (block_len != AES_BLOCK_SIZE) return BLOCK_CIPHER_ERR_INVALID_BLOCK_SIZE;
-    if (key_len != AES128_KEY_SIZE && 
-        key_len != AES192_KEY_SIZE && 
-        key_len != AES256_KEY_SIZE) return BLOCK_CIPHER_ERR_INVALID_KEY_SIZE;
+void aes_init(BlockCipherContext *ctx, const u8 *key, size_t key_len, size_t block_len, BlockCipherDirection dir) {
+    if (!ctx || !key) {
+        fprintf(stderr, "Invalid context or key pointer\n");
+        return;
+    }
+    if (block_len != AES_BLOCK_SIZE) {
+        fprintf(stderr, "Invalid block length: %zu\n", block_len);
+        return;
+    }
+    if (key_len != AES128_KEY_SIZE && key_len != AES192_KEY_SIZE && key_len != AES256_KEY_SIZE) {
+        fprintf(stderr, "Invalid key length: %zu\n", key_len);
+        return;
+    }
 
     ctx->internal_data.aes_internal.block_size = block_len;
     ctx->internal_data.aes_internal.key_len = key_len;
@@ -239,28 +226,27 @@ block_cipher_status_t aes_init(BlockCipherContext *ctx, const u8 *key, size_t ke
            sizeof(ctx->internal_data.aes_internal.round_keys));
 
     /* Key expansion */
-    block_cipher_status_t status;
+    // block_cipher_status_t status = BLOCK_CIPHER_OK_INITIALIZATION;
     switch (dir) {
         case BLOCK_CIPHER_ENCRYPTION:
-            if (aes_set_encrypt_key(key, key_len, ctx->internal_data.aes_internal.round_keys) != BLOCK_CIPHER_OK_KEY_EXPANSION)
-                status = BLOCK_CIPHER_ERR_INITIALIZATION;
-            else status = BLOCK_CIPHER_OK_INITIALIZATION;
+            aes_set_encrypt_key(key, key_len, ctx->internal_data.aes_internal.round_keys);
             break;
         case BLOCK_CIPHER_DECRYPTION:
-            if (aes_set_decrypt_key(key, key_len, ctx->internal_data.aes_internal.round_keys) != BLOCK_CIPHER_OK_KEY_EXPANSION)
-                status = BLOCK_CIPHER_ERR_INITIALIZATION;
-            else status = BLOCK_CIPHER_OK_INITIALIZATION;
+            aes_set_decrypt_key(key, key_len, ctx->internal_data.aes_internal.round_keys);
             break;
         default:
-            status = BLOCK_CIPHER_ERR_INVALID_MODE;
+            fprintf(stderr, "Invalid direction: %s\n", block_cipher_direction_to_string(dir));
             break;
-    }
 
-    return status;
+    }
+    // printf("[RSP] Final: %s\n", block_cipher_status_to_string(status));
 }
 
-block_cipher_status_t aes_encrypt(const u8 *in, u8 *out, const u32 *rk, int r) {
-    if (!in || !out || !rk) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
+void aes_encrypt(const u8 *in, u8 *out, const u32 *rk, int r) {
+    if (!in || !out || !rk) {
+        fprintf(stderr, "Invalid input, output, or round key pointer\n");
+        return;
+    }
     
     u32 s0, s1, s2, s3, t0, t1, t2, t3;
 
@@ -393,11 +379,13 @@ block_cipher_status_t aes_encrypt(const u8 *in, u8 *out, const u32 *rk, int r) {
     //     printf("%08x:", out[i]);
     //     if (i % 4 == 3) printf("\n");
     // }
-    return BLOCK_CIPHER_OK_ENCRYPTION;
 }
 
-block_cipher_status_t aes_decrypt(const u8 *in, u8 *out, const u32 *rk, int r) {
-    if (!in || !out || !rk) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
+void aes_decrypt(const u8 *in, u8 *out, const u32 *rk, int r) {
+    if (!in || !out || !rk) {
+        fprintf(stderr, "Invalid input, output, or round key pointer\n");
+        return;
+    }
     
     u32 s0, s1, s2, s3, t0, t1, t2, t3;
     /* map byte array block to cipher state and add initial round key: */
@@ -515,20 +503,23 @@ block_cipher_status_t aes_decrypt(const u8 *in, u8 *out, const u32 *rk, int r) {
     //     printf("%08x:", out[i]);
     //     if (i % 4 == 3) printf("\n");
     // }
-    
-    return BLOCK_CIPHER_OK_DECRYPTION;
 }
 
-block_cipher_status_t aes_process_block(BlockCipherContext *ctx, const u8 *in, u8 *out, BlockCipherDirection dir) {
-    if (!ctx || !in || !out) return BLOCK_CIPHER_ERR_MEMORY_ALLOCATION;
+void aes_process_block(BlockCipherContext *ctx, const u8 *in, u8 *out, BlockCipherDirection dir) {
+    if (!ctx || !in || !out) {
+        fprintf(stderr, "Invalid context, input, or output pointer\n");
+        return;
+    }
     
-    switch (dir) {
-        case BLOCK_CIPHER_ENCRYPTION:
-            return aes_encrypt(in, out, ctx->internal_data.aes_internal.round_keys, ctx->internal_data.aes_internal.nr);
-        case BLOCK_CIPHER_DECRYPTION:
-            return aes_decrypt(in, out, ctx->internal_data.aes_internal.round_keys, ctx->internal_data.aes_internal.nr);
-        default:
-            return BLOCK_CIPHER_ERR_INVALID_DIRECTION;
+    // printf("%s\n", block_cipher_direction_to_string(dir));
+
+    if (dir == BLOCK_CIPHER_ENCRYPTION) {
+        aes_encrypt(in, out, ctx->internal_data.aes_internal.round_keys, ctx->internal_data.aes_internal.nr);
+    } else if (dir == BLOCK_CIPHER_DECRYPTION) {
+        aes_decrypt(in, out, ctx->internal_data.aes_internal.round_keys, ctx->internal_data.aes_internal.nr);
+    } else {
+        fprintf(stderr, "Invalid block cipher direction\n");
+        return;
     }
 }
 
