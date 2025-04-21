@@ -21,6 +21,8 @@
 extern "C" {
 #endif
 
+#define BLOCK_SIZE          16    /* Block size in bytes        */
+
 #define AES_BLOCK_SIZE      16    /* AES block size in bytes    */
 #define AES128_KEY_SIZE     16    /* AES-128 key size in bytes  */
 #define AES192_KEY_SIZE     24    /* AES-192 key size in bytes  */
@@ -99,7 +101,7 @@ static inline const char *block_cipher_direction_to_string(BlockCipherDirection 
 }
 
 /* Forward declaration for the context. */
-typedef struct BlockCipherContext BlockCipherContext;
+typedef struct __BlockCipherContext__ BlockCipherContext;
 
 /* 
  * The vtable or function pointer set describing any block cipher. 
@@ -169,8 +171,8 @@ typedef union __CipherInternal__ {
     struct __lea_internal__ {
         size_t block_size;      /* Typically must be 16 for LEA */
         size_t key_len;         /* 16, 24, or 32 for LEA-128/192/256 */
-        /* max 128 for LEA-256 */
-        u32 round_keys[4 * (LEA256_NUM_ROUNDS + 1)];    
+        /* max 192 for LEA-256 */
+        u32 round_keys[6 * LEA256_NUM_ROUNDS];    
         int nr;                 /* e.g., 24 for LEA-128, 28, or 32... */
     } lea_internal;
 } CipherInternal;
@@ -186,7 +188,7 @@ typedef union __CipherInternal__ {
  *          and the internal state of the cipher. It is used to manage the state of the cipher during
  *          encryption and decryption operations.
  */
-struct BlockCipherContext {
+struct __BlockCipherContext__ {
     const BlockCipherApi *api;  
     CipherInternal internal_data; /* Generic internal state for any cipher */
 };

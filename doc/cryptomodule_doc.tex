@@ -273,13 +273,13 @@ I have developed a cryptographic software module in the C language, with an emph
 		child [missing] {}		
 		child [missing] {}
 		child { node {mode}
-			child { node {\texttt{mode\_factory.h}} }
+			child { node {\texttt{mode\_factory.c}} }
 			child { node {$\cdots$} }
 		}	
 		child [missing] {}
 		child [missing] {}
 		child { node {$\cdots$} }
-		child { node {\texttt{cryptomodule\_core.h}} }
+		child { node {\texttt{cryptomodule\_core.c}} }
 		child { node {\texttt{main.c}} }
 	}
 	child [missing] {}
@@ -488,7 +488,7 @@ A \textbf{block cipher} is a keyed family of permutations over a fixed-size data
 	\item Let \(\mathcal{M} = \{0,1\}^n\) be the set of all \(n\)-bit messages (plaintext blocks).
 	\item Let \(\mathcal{C} = \{0,1\}^n\) be the set of all \(n\)-bit ciphertext blocks.
 \end{itemize}
-A \textbf{block cipher} is have two induced functions: \[
+A \textbf{block cipher} is have two efficient induced functions: \[
 E : \mathcal{K} \times \mathcal{M} \to \mathcal{C} 
 \quad\text{and}\quad
 D : \mathcal{K} \times \mathcal{C} \to \mathcal{M},
@@ -506,7 +506,7 @@ D : \mathcal{K} \times \mathcal{C} \to \mathcal{M},
 	\centering\setstretch{.855}
 	\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ccccccc}
 		\hline
-		\textbf{Alg.} & $\boldsymbol{n}$ (bit) & $\boldsymbol{k}$ (bit) & \textbf{Rounds} (bit) & \textbf{RK Size} (bit) & \textbf{\# of RKs} (bit) & \textbf{Total RK Size} (bit) \\
+		\textbf{Alg.} & $\boldsymbol{n}$ (bit) & $\boldsymbol{k}$ (bit) & \textbf{\# of Rounds} & \textbf{RK Size} (bit) & \textbf{\# of RKs} & \textbf{Total RK Size} (bit) \\
 		\hline
 		\textsf{AES--128} & 128 & 128 & 10 & 128 (4-word) & 11 & 1408 (44-word) \\
 		\textsf{AES--192} & 128 & 192 & 12 & 128 (4-word) & 13 & 1664 (52-word)\\
@@ -516,9 +516,9 @@ D : \mathcal{K} \times \mathcal{C} \to \mathcal{M},
 		\textsf{ARIA-192} & 128 & 192 & 14 & 128 (4-word) & 15 & 1920 (60-word)\\
 		\textsf{ARIA-256} & 128 & 256 & 16 & 128 (4-word) & 17 & 2176 (68-word)\\
 		\hline
-		\textsf{LEA-128} & 128 & 128 & 24 & 128 (4-word) & 24 & 3072 (96-word)\\
-		\textsf{LEA-192} & 128 & 192 & 28 & 128 (4-word) & 28 & 3584 (112-word)\\
-		\textsf{LEA-256} & 128 & 256 & 32 & 128 (4-word) & 32 & 4096 (128-word)\\
+		\textsf{LEA-128} & 128 & 128 & 24 & 192 (6-word) & 24 & 4608 (144-word)\\
+		\textsf{LEA-192} & 128 & 192 & 28 & 192 (6-word) & 28 & 5376 (168-word)\\
+		\textsf{LEA-256} & 128 & 256 & 32 & 192 (6-word) & 32 & 6144 (192-word)\\
 		\hline
 	\end{tabular*}
 	\caption{Comparison of AES, ARIA, and LEA parameters for 128-, 192-, and 256-bit keys. 
@@ -527,163 +527,94 @@ D : \mathcal{K} \times \mathcal{C} \to \mathcal{M},
 	}
 	\label{tab:cipher-comparison}
 \end{table}
+\newpage
+\begin{lstlisting}[style=cstyle]
+typedef struct __BlockCipherApi__ {
+	const char *name;
+	void (*init)(BlockCipherContext* ctx, /* ... */);
+	void (*process_block)(BlockCipherContext* ctx, /* ... */);
+	void (*dispose)(BlockCipherContext* ctx);
+} BlockCipherApi;
 
+typedef union __CipherInternal__ {
+	struct __aes_internal__ {
+		 /* ... */
+	} aes_internal;
+	struct __aria_internal__ {
+		 /* ... */ 
+	} aria_internal;
+	struct __lea_internal__ {
+		 /* ... */
+	} lea_internal;
+} CipherInternal;
+
+typedef struct __BlockCipherContext__ {
+	const BlockCipherApi *api;  
+	CipherInternal internal_data; /* Generic internal state for any cipher */
+} BlockCipherContext;
+\end{lstlisting}
 \begin{figure}[h!]
-\begin{tikzpicture}[x=1cm, y=-0.07cm, font=\scriptsize, draw=black, >=Stealth, scale=.8]
-	% BlockCipherContext outline
-	\draw[thick] (0,0) rectangle ++(3,128);  % 128 bytes tall, 3 cm wide
-	\draw[thick] (0,8) -- ++(3,0);          % line separating api vs internal_data at 8 bytes
-	
-	% BlockCipherContext labels and offsets
-	\node[anchor=south, align=center, font=\small] at (1.5,0) {\textbf{BlockCipherContext}\\ \textbf{(544=8+536 bytes)}};
-	\node[align=center] at (1.5,4) {\texttt{BlockCipherApi*}};
-	\node[align=center] at (1.5,68) {\texttt{CipherInternal}\\ (union, 536 bytes)};
-	
-	\node[anchor=east] at (0,0) {{\tiny\ttfamily 0x000}};   % top address
-	\node[anchor=east] at (0,8) {{\tiny\ttfamily 0x008}};
-	\node[anchor=east] at (0,16) {{\tiny\ttfamily 0x010}};
-	\node[anchor=east] at (0,24) {{\tiny\ttfamily 0x018}};
-	\node[anchor=east] at (0,120) {{\tiny\ttfamily 0x210}};
-	\node[anchor=east] at (0,128) {{\tiny\ttfamily 0x220}};
-	
-	% Expand union internal_data: AES, ARIA, LEA internal structures side-by-side
-	% Base alignment line for union (offset 0x08 in context)
-	\draw[densely dashed, color=gray!50] (3,8) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x008};
-	\draw[densely dashed, color=gray!50] (3,16) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x010};
-	\draw[densely dashed, color=gray!50] (3,24) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x018};
-	\draw[densely dashed, color=gray!50] (3,45) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x100};
-	\draw[densely dashed, color=gray!50] (3,53) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x108};
-	\draw[densely dashed, color=gray!50] (3,75) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x120};
-	\draw[densely dashed, color=gray!50] (3,83) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x128};
-	\draw[densely dashed, color=gray!50] (3,120) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x210};
-	\draw[densely dashed, color=gray!50] (3,128) -- ++(14,0) node[anchor=west]{\tiny\ttfamily 0x220};
-	
-	% AES internal struct (80 bytes used out of 120)
-	\draw (5,8) rectangle ++(3,120);       % union size tall (for visual alignment)
-	\draw (5,16) -- ++(3,0);
-	\draw (5,24) -- ++(3,0);
-	\draw (5,45) -- ++(3,0);
-	\draw (5,53) -- ++(3,0);
-	\node[anchor=south, align=center] at (6.5,8) {\textbf{aes\_internal}\\ \textbf{(8+8+240+8=264 bytes)}};
-	\node at (6.5,12) {\texttt{size\_t block\_size}};
-	\node at (6.5,20) {\texttt{size\_t key\_len}};
-	\node[align=center] at (6.5,36) {\texttt{u32 round\_keys[60]} \\ (240 bytes)};
-	\node at (6.5,49) {\texttt{int nr}\; (4 bytes)};
-	\node[color=gray, align=center] at (6.5,90) {\footnotesize (unused\\ \footnotesize 272 bytes)};
-	\filldraw[gray!70, opacity=.2] (5, 53) rectangle (8, 128);
-	
-	\filldraw[teal!70, opacity=.2] (5, 8) rectangle (8, 16);
-	\filldraw[orange!70, opacity=.2] (5, 16) rectangle (8, 24);
-	\filldraw[red!70, opacity=.2] (5, 24) rectangle (8, 45);
-	\filldraw[blue!70, opacity=.2] (5, 45) rectangle (8, 53);
-	
-	%	\node[anchor=east] at (5,8) {{\tiny 0x00}};
-	%	\node[anchor=east] at (5,16) {{\tiny 0x08}};
-	%	\node[anchor=east] at (5,24) {{\tiny 0x10}};
-	%	\node[anchor=east] at (5,76) {{\tiny 0x4C}};
-	%	\node[anchor=east] at (5,128) {{\tiny 0x78}};  % union full size
-	%	
-	% ARIA internal struct (same as AES, 80 bytes)
-	\draw (9,8) rectangle ++(3,120);
-	\draw (9,16) -- ++(3,0);
-	\draw (9,24) -- ++(3,0);
-	\draw (9,75) -- ++(3,0);
-	\draw (9,83) -- ++(3,0);
-	\node[anchor=south, align=center] at (10.5,8) {\textbf{aria\_internal}\\ \textbf{(8+8+272+8=296 bytes)}};
-	\node at (10.5,12) {\texttt{size\_t block\_size}};
-	\node at (10.5,20) {\texttt{size\_t key\_len}};
-	\node[align=center] at (10.5,50) {\texttt{u32 round\_keys[68]} \\ (272 bytes)};
-	\node at (10.5,79) {\texttt{int nr}\; (4 bytes)};
-	\node[color=gray, align=center] at (10.5,104) {\footnotesize (unused\\ \footnotesize 240 bytes)};
-	\filldraw[gray!70, opacity=.2] (9, 83) rectangle (12, 128);
-	
-	\filldraw[teal!70, opacity=.2] (9, 8) rectangle (12, 16);
-	\filldraw[orange!70, opacity=.2] (9, 16) rectangle (12, 24);
-	\filldraw[red!70, opacity=.2] (9, 24) rectangle (12, 75);
-	\filldraw[blue!70, opacity=.2] (9, 75) rectangle (12, 83);
-	
-	%	\node[anchor=east] at (9,8) {{\tiny 0x00}};
-	%	\node[anchor=east] at (9,16) {{\tiny 0x08}};
-	%	\node[anchor=east] at (9,24) {{\tiny 0x10}};
-	%	\node[anchor=east] at (9,76) {{\tiny 0x4C}};
-	%	\node[anchor=east] at (9,128) {{\tiny 0x78}};
-	
-	% LEA internal struct (116 bytes + 4 bytes padding)
-	\draw (13,8) rectangle ++(3,120);
-	\draw (13,16) -- ++(3,0);
-	\draw (13,24) -- ++(3,0);
-	\draw (13,120) -- ++(3,0);
-	\node[anchor=south, align=center] at (14.5,8) {\textbf{lea\_internal}\\ \textbf{(8+8+512+8=536 bytes)}};
-	\node at (14.5,12) {\texttt{size\_t block\_size}};
-	\node at (14.5,20) {\texttt{size\_t key\_len}};
-	\node[align=center] at (14.5,64) {\texttt{u32 round\_keys[128]} \\ (512 bytes)};
-	\node at (14.5,124) {\texttt{int nr}\; (4 bytes)};
-	
-	\filldraw[teal!70, opacity=.2] (13, 8) rectangle (16, 16);
-	\filldraw[orange!70, opacity=.2] (13, 16) rectangle (16, 24);
-	\filldraw[red!70, opacity=.2] (13, 24) rectangle (16, 120);
-	\filldraw[blue!70, opacity=.2] (13, 120) rectangle (16, 128);
-	
-	%	\node[anchor=east] at (13,8) {{\tiny 0x00}};
-	%	\node[anchor=east] at (13,16) {{\tiny 0x08}};
-	%	\node[anchor=east] at (13,24) {{\tiny 0x10}};
-	%	\node[anchor=east] at (13,112) {{\tiny 0x70}};
-	%	\node[anchor=east] at (13,128) {{\tiny 0x78}};
-	
-	% Brace to indicate union grouping
-	\draw[decorate,decoration={brace,amplitude=4pt}] (16,130) -- node[below=4pt]{Union members (share same memory)} (5,130);
-	
-	% BlockCipherApi vtable structure (40 bytes)
-	% Place vtable below (starting at y=140 for offset 0)
-	\filldraw[blue!50, opacity=.8] (0, 160) rectangle (3, 168);
-	\draw[thick] (0,160) rectangle ++(3,40);
-	\draw[thick] (0,168) -- ++(3,0);
-	\draw[thick] (0,176) -- ++(3,0);
-	\draw[thick] (0,184) -- ++(3,0);
-	\draw[thick] (0,192) -- ++(3,0);
-	\node[anchor=south,align=center] at (1.5,160) {\textbf{BlockCipherApi (vtable)}\\ \textbf{8$\times$5=40 bytes}};
-	\node at (1.5,164) {\texttt{const char* name}};
-	\node at (1.5,172) {\texttt{int*}};
-	\node at (1.5,180) {\texttt{void*}};
-	\node at (1.5,188) {\texttt{void*}};
-	\node at (1.5,196) {\texttt{void*}};
-	%	\node[anchor=east] at (0,160) {{\tiny 0x00}};
-	%	\node[anchor=east] at (0,168) {{\tiny 0x08}};
-	%	\node[anchor=east] at (0,176) {{\tiny 0x10}};
-	%	\node[anchor=east] at (0,184) {{\tiny 0x18}};
-	%	\node[anchor=east] at (0,192) {{\tiny 0x20}};
-	%	\node[anchor=east] at (0,190) {{\tiny 0x28}};
-	
-	% Arrows: BlockCipherContext.api -> vtable, and vtable function ptrs -> functions
-	% API pointer arrow (from BCC.api field to vtable)
-	\draw[->, thick] (0,4) -| (-1,4) -- (-1,164) -- ++(1,0);
-	
-	% Function implementation nodes for AES
-	\node[draw, anchor=west, fill=magenta!10] (fn_init)        at (3.5,172) {\texttt{int init(BlockCipherContext* ctx, size\_t block\_size, const u8* key, size\_t key\_len);}};
-	\node[draw, anchor=west, fill=green!10] (fn_encrypt)     at (3.5,180) {\texttt{encrypt(BlockCipherContext* ctx, const u8* pt, u8* ct);}};
-	\node[draw, anchor=west, fill=lime!10] (fn_decrypt)     at (3.5,188) {\texttt{decrypt(BlockCipherContext* ctx, const u8* ct, u8* pt);}};
-	\node[draw, anchor=west, fill=cyan!10] (fn_dispose)     at (3.5,196) {\texttt{dispose(BlockCipherContext* ctx);}};
-	
-	\draw[->] (3,172) -- (fn_init.west);
-	\draw[->] (3,180) -- (fn_encrypt.west);
-	\draw[->] (3,188) -- (fn_decrypt.west);
-	\draw[->] (3,196) -- (fn_dispose.west);
-\end{tikzpicture}
+\input{memory_layout/BlockCipherContext.tex}
 \end{figure}
 \begin{figure}[h!]\centering
 	\includegraphics[scale=1]{memory_layout/BlockCipherApi.pdf}
 \end{figure}
 
+
 \newpage
 \input{block_cipher/aes}
 % Detailed content about supported block ciphers, usage examples, ASM optimizations
 
+\newpage
 %-----------------------------------------------------------------------
-%  CHAPTER 3: MODES OF OPERATION (Placeholder)
+%  SECTION 2: MODES OF OPERATION
 %-----------------------------------------------------------------------
 \section{Modes of Operation}
-% Detailed content about CBC, CTR, GCM, etc.
 
+\begin{lstlisting}[style=cstyle]
+typedef struct __ModeOfOperationApi__ {
+	const char *name;
+	void (*init)( /* ... */ );
+	void (*process)( /* ... */ );
+	void (*dispose)( /* ... */ );
+} ModeOfOperationApi;
+
+typedef union __ModeInternal__ {
+	struct __cbc_internal__ {
+		/* ... */
+	} cbc_internal;
+	struct __ctr_internal__ {
+		/* ... */
+	} ctr_internal;
+	struct __gcm_internal__ {
+		/* ... */
+	} gcm_internal;
+	struct __ecb_internal__ {
+		/* ... */
+	} ecb_internal;
+	
+} ModeInternal;
+
+typedef struct __ModeOfOperationContext__ {
+	const ModeOfOperationApi *api;  // Pointer to the mode API
+	BlockCipherContext cipher_ctx; // Block cipher context
+	ModeInternal internal_data;     // Internal state for the mode
+} ModeOfOperationContext;
+\end{lstlisting}
+\begin{figure}[h!]
+	\input{memory_layout/ModeOfOperationContext.tex}
+\end{figure}
+
+\newpage
+\subsection{ECB}
+
+\subsection{CBC}
+
+\subsection{CTR}
+
+\subsection{GCM}
+
+\newpage
 %-----------------------------------------------------------------------
 %  CHAPTER 4: RANDOM NUMBER GENERATOR (Placeholder)
 %-----------------------------------------------------------------------
