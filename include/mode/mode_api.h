@@ -41,7 +41,7 @@ typedef struct __ModeOfOperationApi__ {
      */
     void (*mode_init)(
         ModeOfOperationContext *mode_ctx,
-        const BlockCipherApi *cipher_api,
+        BlockCipherType cipher_type,
         const u8 *key,
         size_t key_len,
         const u8 *iv,
@@ -54,28 +54,31 @@ typedef struct __ModeOfOperationApi__ {
      * @brief Process data in place (or into a destination buffer).
      * Must handle full-block multiples.
      */
-    void (*mode_update)(ModeOfOperationContext *mode_ctx,
-                    const u8 *in,
-                    u8 *out,
-                    size_t in_len,
-                    size_t out_len,
-                    BlockCipherDirection dir);
+    void (*mode_update)(
+        ModeOfOperationContext *mode_ctx,
+        const u8 *in, size_t in_len,
+        u8 *out, size_t out_len,
+        BlockCipherDirection dir);
 
-    void (*mode_update_auth)(ModeOfOperationContext *mode_ctx,
-                    const u8 *in,
-                    size_t in_len,
-                    BlockCipherDirection dir);
+    void (*mode_update_auth)(
+        ModeOfOperationContext *mode_ctx,
+        const u8 *in,
+        size_t in_len,
+        BlockCipherDirection dir);
 
-    void (*mode_finalize)(ModeOfOperationContext *mode_ctx,
-                    const u8 *in,
-                    u8 *out,
-                    size_t in_len,
-                    size_t out_len,
-                    BlockCipherDirection dir);
-    void (*mode_finalize_auth)(ModeOfOperationContext *mode_ctx,
-                    const u8 *in,
-                    size_t in_len,
-                    BlockCipherDirection dir);
+    void (*mode_finalize)(
+        ModeOfOperationContext *mode_ctx,
+        const u8 *in,
+        u8 *out,
+        size_t in_len,
+        size_t out_len,
+        BlockCipherDirection dir);
+
+    void (*mode_finalize_auth)(
+        ModeOfOperationContext *mode_ctx,
+        const u8 *in,
+        size_t in_len,
+        BlockCipherDirection dir);
 
     /**
      * @brief Clean up resources.
@@ -124,13 +127,13 @@ typedef struct __ModeInternal__ {
 } ModeInternal;
 
 struct __ModeOfOperationContext__ {
-    const ModeOfOperationApi *api;  // Pointer to the mode API
-    BlockCipherContext *cipher_ctx; // Pointer to the block cipher context
+    const ModeOfOperationApi *mode_api;  // Pointer to the mode API
+    BlockCipherContext *cipher_ctx;      // Pointer to the block cipher context
+    ModeInternal mode_internal_data; // Internal state for the mode of operation
     size_t block_size; // Block size in bytes
     u8 buffer[BLOCK_SIZE]; // Buffer for partial blocks
     size_t buffer_len; // Length of the buffered data
     size_t total_len; // Total length of data processed
-    ModeInternal internal_data; // Internal state for the mode of operation
     // Note: The internal_data union contains state for different modes (CBC, CTR, GCM, ECB).
     // The specific mode in use will determine which part of the union is relevant.
 };

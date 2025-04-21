@@ -30,7 +30,7 @@ int main(void) {
     //     "The quick brown fox jumps over the lazy dog!!!";
     // size_t pt_len = strlen(plaintext);  // 43 bytes
 
-    size_t msg_len = 16;
+    size_t pt_len = 16;
     size_t pt_max_len = 32;
 
     u8 *pt = (u8*)malloc(pt_max_len);
@@ -38,12 +38,12 @@ int main(void) {
         fprintf(stderr, "Memory allocation failed\n");
         return -1;
     }
-    for (size_t i = 0; i < msg_len; i++) {
+    for (size_t i = 0; i < pt_len; i++) {
         pt[i] = (uint8_t)i*i;
     }
 
-    printf("[Fit-] Original message (%2zu): ", msg_len);
-    for (size_t i = 0; i < msg_len; i++) {
+    printf("[Fit-] Original message (%2zu): ", pt_len);
+    for (size_t i = 0; i < pt_len; i++) {
         printf("(%ld)%02X:", i, pt[i]);
     } puts("");
 
@@ -53,39 +53,54 @@ int main(void) {
     } puts("");
 
     // For ECB/CBC with padding, ciphertext_len may grow by +block_size
-    uint8_t ciphertext[64] = {0};
-    size_t ciphertext_len = 0;
+    uint8_t ct[64] = {0};
+    size_t ct_len = pt_max_len;
 
     // 3) Set up BlockCipherContext for AES
-    BlockCipherContext cipher_ctx;
-    block_cipher_status_t status = BLOCK_CIPHER_OK;
-    cipher_ctx.cipher_api = block_cipher_factory("AES");
-    status = cipher_ctx.cipher_api->cipher_init(&cipher_ctx, key, sizeof(key)/sizeof(u8), AES_BLOCK_SIZE, BLOCK_CIPHER_ENCRYPTION);
-    // status = cipher_ctx.api->init(&cipher_ctx, key, sizeof(key)/sizeof(u8), AES_BLOCK_SIZE, BLOCK_CIPHER_ENCRYPTION);
-    if (status != BLOCK_CIPHER_OK) {
-        fprintf(stderr, "Error initializing AES context\n");
-        return -1;
-    }
+
 
     // 4) Choose a mode: ECB or CBC (both defined in mode_api.h)
     ModeOfOperationContext mode_ctx;
-    mode_ctx.api = mode_factory("ECB");
+    // BlockCipherContext cipher_ctx;
+    mode_ctx.mode_api = mode_factory("ECB");
 
-    mode_ctx.api->mode_init(&mode_ctx, cipher_ctx.cipher_api, key, sizeof(key)/sizeof(u8), iv, sizeof(iv)/sizeof(u8), pt, pt_max_len, BLOCK_CIPHER_ENCRYPTION);
-    printf("      Padded plaintext: (%2zu): ", pt_max_len);
+    mode_ctx.mode_api->mode_init(
+        &mode_ctx, BLOCK_CIPHER_AES128, key, sizeof(key)/sizeof(u8), NULL, 0, pt, pt_len, BLOCK_CIPHER_ENCRYPTION);
+
+    // size_t total_block_size = pkcs7_pad(pt, msg_len, BLOCK_SIZE);
+
+    // printf("            Key: ");
+    // for (size_t i = 0; i < sizeof(key)/sizeof(u8); i++) {
+    //     printf("%02X ", key[i]);
+    // }
+    // puts("");
+    // printf("            IV: ");
+    // for (size_t i = 0; i < sizeof(iv)/sizeof(u8); i++) {
+    //     printf("%02X ", iv[i]);
+    // }
+    // puts("");
+    printf("      Padded Plaintext: (%2zu): ", pt_max_len);
     for (size_t i = 0; i < pt_max_len; i++) {
         printf("(%ld)%02X:", i, pt[i]);
-    }
-    puts("");
+    } puts("");
+
+    mode_ctx.mode_api->mode_update(
+        &mode_ctx, pt, pt_max_len, ct, ct_len, BLOCK_CIPHER_ENCRYPTION);
     
-    mode_ctx.api->mode_update(&mode_ctx, pt, ciphertext, pt_max_len, ciphertext_len, BLOCK_CIPHER_ENCRYPTION);
-    mode_ctx.api->mode_dispose(&mode_ctx);
-    cipher_ctx.cipher_api->cipher_dispose(&cipher_ctx);
-    printf("            Ciphertext: (%2zu): ", ciphertext_len);
-    for (size_t i = 0; i < ciphertext_len; i++) {
-        printf("%02X ", ciphertext[i]);
-    }
-    puts("");
+    printf("   (Update) Ciphertext: (%2zu): ", ct_len);
+    for (size_t i = 0; i < ct_len; i++) {
+        printf("%02X ", ct[i]);
+    } puts("");
+
+
+    // mode_ctx.api->mode_update(&mode_ctx, pt, ciphertext, pt_max_len, ciphertext_len, BLOCK_CIPHER_ENCRYPTION);
+    // mode_ctx.api->mode_dispose(&mode_ctx);
+    // cipher_ctx.cipher_api->cipher_dispose(&cipher_ctx);
+    // printf("            Ciphertext: (%2zu): ", ciphertext_len);
+    // for (size_t i = 0; i < ciphertext_len; i++) {
+    //     printf("%02X ", ciphertext[i]);
+    // }
+    // puts("");
 
     free(pt);
 

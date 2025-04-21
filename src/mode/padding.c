@@ -22,7 +22,7 @@ size_t pkcs7_pad(u8 *buf, size_t data_len, size_t block_size) {
 }
 
 /* Remove PKCS#7 padding.
- * buf_len must be ≥ block_size and a multiple of block_size.
+ * buf_len must be >= block_size and a multiple of block_size.
  * On success returns new length (data without padding), or 0 on invalid padding. */
 size_t pkcs7_unpad(u8 *buf, size_t buf_len, size_t block_size) {
     if (buf_len == 0 || buf_len % block_size != 0) return 0;
