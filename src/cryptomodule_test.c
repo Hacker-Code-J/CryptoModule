@@ -4,25 +4,20 @@
 #include "../include/cryptomodule_utils.h"
 #include "../include/block_cipher/block_cipher_api.h"
 #include "../include/block_cipher/block_cipher_aes.h"
+#include "../include/ansi_code.h"
 
 void progress_bar(int current, int total) {
     int width = 50; // Width of the progress bar
     float progress = (float)current / total;
     int pos = width * progress;
 
-    // ANSI Escape Codes for colors
-    const char* GREEN = "\x1b[32m";
-    const char* YELLOW = "\x1b[33m";
-    const char* RED = "\x1b[31m";
-    const char* RESET = "\x1b[0m";
-
     printf("\r[");
     for (int i = 0; i < width; ++i) {
-        if (i < pos) printf("%s=", GREEN); // White for completed part
-        else if (i == pos) printf("%s>", YELLOW); // Yellow for current position
-        else printf("%s ", RED); // Red for remaining part
+        if (i < pos) printf("%s=", ANSI_FG_GREEN); // White for completed part
+        else if (i == pos) printf("%s>", ANSI_FG_YELLOW); // Yellow for current position
+        else printf("%s ", ANSI_FG_RED); // Red for remaining part
     }
-    printf("%s] %d%% (%d/%d)", RESET, (int)(progress * 100.0), current, total);    
+    printf("%s] %d%% (%d/%d)", ANSI_RESET, (int)(progress * 100.0), current, total);    
 }
 
 void parse_hexline(u32 *dst, const char* src, size_t length) {
@@ -109,9 +104,6 @@ void create_BlockCipher_KAT_ReqFile(BlockCipherType type, const char *filename_f
         } else if (flag == 1 && strncmp(line, "CT =", 4) == 0) {
             fputs(line, fp_req); fputs("\n", fp_req);
         } 
-        // else {
-        //     fprintf(stderr, "Unknown line format: %s\n", line);
-        // }
     } // while
 
     free(line);
@@ -307,39 +299,33 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
     char filename_rsp[100];
     
     if (type == BLOCK_CIPHER_AES128) {
-        // snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarKey128.fax");
-        // snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarKey128.req");
-        // snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarKey128.rsp");
-        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarTxt128.fax");
-        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarTxt128.req");
-        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarTxt128.rsp");
+        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECB_AES128.fax");
+        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECB_AES128.req");
+        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECB_AES128.rsp");
     } else if (type == BLOCK_CIPHER_AES192) {
-        // snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarKey192.fax");
-        // snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarKey192.req");
-        // snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarKey192.rsp");
-        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarTxt192.fax");
-        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarTxt192.req");
-        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarTxt192.rsp");
+        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECB_AES192.fax");
+        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECB_AES192.req");
+        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECB_AES192.rsp");
     } else if (type == BLOCK_CIPHER_AES256) {
-        // snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarKey256.fax");
-        // snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarKey256.req");
-        // snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarKey256.rsp");
-        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECBVarTxt256.fax");
-        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECBVarTxt256.req");
-        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECBVarTxt256.rsp");
+        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECB_AES256.fax");
+        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECB_AES256.req");
+        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECB_AES256.rsp");
     } else {
         fprintf(stderr, "[VERIFY] Unknown BlockCipherType: %d\n", type);
         return;
     }
 
-    printf("\x1b[45m\x1b[01m--------------------------------- KAT TEST for %s ---------------------------------\x1b[49m\x1b[0m\n", block_cipher_type_to_string(type));
+    printf("%s%s--------------------------------- KAT TEST for %s ---------------------------------%s%s\n", 
+        ANSI_BG_MAGENTA, ANSI_BOLD,
+        block_cipher_type_to_string(type),
+        ANSI_BG_DEFAULT, ANSI_RESET);
     
     create_BlockCipher_KAT_ReqFile(type, filename_fax, filename_req);
     create_BlockCipher_KAT_RspFile(type, filename_req, filename_rsp);
 
-    printf("\n\x1b[32m[PATH] Test vector file : %s\n", filename_fax);
+    printf("\n%s[PATH] Test vector file : %s\n", ANSI_FG_BMAGENTA, filename_fax);
     printf("[PATH] Request file     : %s\n", filename_req);
-    printf("[PATH] Response file    : %s\x1b[0m\n", filename_rsp);
+    printf("[PATH] Response file    : %s%s\n", filename_rsp, ANSI_RESET);
 
     FILE* fp_fax = fopen(filename_fax, "r");
     if (fp_fax == NULL) {
@@ -381,9 +367,6 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
 
     printf("\n\n");
 
-    // clear_block_cipher_test_data(data_fax);
-    // clear_block_cipher_test_data(data_rsp);
-
     char line_fax[MAX_TXT_SIZE];
     char line_rsp[MAX_TXT_SIZE];
 
@@ -407,7 +390,13 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
             // printf("[VERIFY] Line %d\nFAX: %s\nRSP: %s\n", line_number, line_fax, line_rsp);
 
             if (strcmp(line_fax, line_rsp) != 0) {
-                fprintf(stderr, "\n\x1b[01m\x1b[41m[%4d Line] Mismatch found:\x1b[49m\n\x1b[32mFAX: %s\n\x1b[31mRSP: %s\x1b[0m\n", line_number, line_fax, line_rsp);
+                fprintf(stderr, "\n%s%s[%4d Line] Mismatch found:%s\n%sFAX: %s\n%sRSP: %s%s\n", 
+                    ANSI_BOLD, ANSI_BG_RED, // %s%s
+                    line_number,            // %4d  
+                    ANSI_BG_DEFAULT, ANSI_FG_GREEN, // %s
+                    line_fax,               // FAX: %s  
+                    ANSI_FG_RED,
+                    line_rsp, ANSI_RESET);
                 result = false;
                 break;
             }
@@ -416,7 +405,6 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
 
         // usleep(5000);
         // usleep(10000); // Sleep for 10 milliseconds
-        // usleep(50000);
 
         if (strncmp(line_fax, "KEY =", 5) == 0) {
             passed_tests++;
@@ -427,15 +415,17 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
         fflush(stdout);
     }
 
-    printf("\n\n\x1b[33m[*] Test Results:\n");
+    printf("\n\n%s[*] Test Results:\n", ANSI_FG_YELLOW);
     printf("- Total vectors : %3d\n", total_tests);
-    printf("- Passed vectors: %3d\x1b[0m\n", passed_tests);
+    printf("- Passed vectors: %3d%s\n", passed_tests, ANSI_RESET);
     printf("%s\n\n", result ? "\x1b[36m[O] Result: PASSED" : "\x1b[31m[X] Result: FAILED");
-    puts("\x1b[0m");
+    printf("%s", ANSI_RESET);
 
     // Cleanup
     fclose(fp_fax);
     fclose(fp_rsp);
-    printf("\x1b[45m\x1b[01m----------------------------------------- END ------------------------------------------\x1b[49m\x1b[0m\n");
+    printf("%s%s----------------------------------------- END ------------------------------------------%s%s\n",
+        ANSI_BG_MAGENTA, ANSI_BOLD,
+        ANSI_BG_DEFAULT, ANSI_RESET);
     printf("\n\n");
 }
