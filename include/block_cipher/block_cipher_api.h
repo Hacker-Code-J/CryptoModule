@@ -46,6 +46,11 @@ extern "C" {
 #define LEA128_NUM_ROUNDS   24    /* LEA-128 number of rounds   */
 #define LEA192_NUM_ROUNDS   28    /* LEA-192 number of rounds   */
 #define LEA256_NUM_ROUNDS   32    /* LEA-256 number of rounds   */
+
+/**
+ * @brief Block cipher type enumeration.
+ * @details This enumeration defines the supported block cipher types.
+ */
 typedef enum {
     BLOCK_CIPHER_AES128 = 0xAE5128,   // Identifier for AES-128
     BLOCK_CIPHER_AES192 = 0xAE5192,   // Identifier for AES-192
@@ -66,15 +71,15 @@ typedef enum {
  */
 static inline const char *block_cipher_type_to_string(BlockCipherType type) {
     switch (type) {
-        case BLOCK_CIPHER_AES128: return "AES-128";
-        case BLOCK_CIPHER_AES192: return "AES-192";
-        case BLOCK_CIPHER_AES256: return "AES-256";
-        case BLOCK_CIPHER_ARIA128: return "ARIA-128";
-        case BLOCK_CIPHER_ARIA192: return "ARIA-192";
-        case BLOCK_CIPHER_ARIA256: return "ARIA-256";
-        case BLOCK_CIPHER_LEA128: return "LEA-128";
-        case BLOCK_CIPHER_LEA192: return "LEA-192";
-        case BLOCK_CIPHER_LEA256: return "LEA-256";
+        case BLOCK_CIPHER_AES128:   return "AES-128";
+        case BLOCK_CIPHER_AES192:   return "AES-192";
+        case BLOCK_CIPHER_AES256:   return "AES-256";
+        case BLOCK_CIPHER_ARIA128:  return "ARIA-128";
+        case BLOCK_CIPHER_ARIA192:  return "ARIA-192";
+        case BLOCK_CIPHER_ARIA256:  return "ARIA-256";
+        case BLOCK_CIPHER_LEA128:   return "LEA-128";
+        case BLOCK_CIPHER_LEA192:   return "LEA-192";
+        case BLOCK_CIPHER_LEA256:   return "LEA-256";
         default: return "UNKNOWN";
     }
 }
@@ -100,6 +105,18 @@ static inline const char *block_cipher_direction_to_string(BlockCipherDirection 
     }
 }
 
+/**
+ * @brief Block cipher status enumeration.
+ * @details This enumeration defines the status of block cipher operations.
+ */
+typedef enum {
+    BLOCK_CIPHER_OK = 0x00,               // Operation successful
+    BLOCK_CIPHER_ERR_INVALID_KEY = 0x01,    // Invalid key error
+    BLOCK_CIPHER_ERR_INVALID_BLOCK = 0x02,  // Invalid block error
+    BLOCK_CIPHER_ERR_UNSUPPORTED_DIRECTION = 0x03, // Unsupported mode error
+    BLOCK_CIPHER_ERR_UNKNOWN = 0xFF         // Unknown error
+} block_cipher_status_t;
+
 /* Forward declaration for the context. */
 typedef struct __BlockCipherContext__ BlockCipherContext;
 
@@ -115,36 +132,45 @@ typedef struct __BlockCipherContext__ BlockCipherContext;
   *          and a dispose function for cleaning up the context.
   */
 typedef struct __BlockCipherApi__ {
-    const char *name; /* e.g. "AES" or "MyCipher" */
+    const char *cipher_name; /* e.g. "AES" or "MyCipher" */
 
     /**
      * @brief Initialize the block cipher context.
-     * @param ctx Pointer to the context to be initialized.
+     * @param cipher_ctx Pointer to the context to be initialized.
      * @param key Pointer to the key.
      * @param key_len Length of the key in bytes.
      * @param block_len Length of the block in bytes.
      * @param dir Direction of the cipher (ENCRYPTION_MODE or DECRYPTION_MODE).
      * @return Status of the initialization (BLOCK_CIPHER_OK or error code).
      */
-    void (*init)(BlockCipherContext* ctx, const u8* key, size_t key_len, size_t block_len, BlockCipherDirection dir);
+    block_cipher_status_t (*cipher_init)(
+        BlockCipherContext* cipher_ctx, 
+        const u8* key, 
+        size_t key_len, 
+        size_t block_len, 
+        BlockCipherDirection dir);
 
     /**
      * @brief Process a block of data (encrypt or decrypt).
-     * @param ctx Pointer to the context.
+     * @param cipher_ctx Pointer to the context.
      * @param in Pointer to the input block (plaintext for encryption, ciphertext for decryption).
      * @param out Pointer to the buffer where the output will be stored (ciphertext for encryption, plaintext for decryption).
      * @param dir Direction of the cipher (ENCRYPTION_MODE or DECRYPTION_MODE).
      * @return Status of the operation (BLOCK_CIPHER_OK or error code).
      */
-    void (*process_block)(BlockCipherContext* ctx, const u8* in, u8* out, BlockCipherDirection dir);
+    block_cipher_status_t (*cipher_process)(
+        BlockCipherContext* cipher_ctx, 
+        const u8* in, 
+        u8* out, 
+        BlockCipherDirection dir);
 
     /**
      * @brief Dispose of the block cipher context.
-     * @param ctx Pointer to the context to be disposed of.
+     * @param cipher_ctx Pointer to the context to be disposed of.
      * @details This function should clean up any resources allocated for the context.
      *          It may also zero out sensitive data in the context.
      */
-    void (*dispose)(BlockCipherContext* ctx);
+    void (*cipher_dispose)(BlockCipherContext* cipher_ctx);
 
 } BlockCipherApi;
 
@@ -189,12 +215,12 @@ typedef union __CipherInternal__ {
  *          encryption and decryption operations.
  */
 struct __BlockCipherContext__ {
-    const BlockCipherApi *api;  
-    CipherInternal internal_data; /* Generic internal state for any cipher */
+    const BlockCipherApi *cipher_api;  
+    CipherInternal cipher_internal_data; /* Generic internal state for any cipher */
 };
 
-static inline void clear_block_cipher_ctx(BlockCipherContext *ctx) {
-    if (ctx) memset(ctx, 0, sizeof(*ctx));
+static inline void clear_block_cipher_ctx(BlockCipherContext *cipher_ctx) {
+    if (cipher_ctx) memset(cipher_ctx, 0, sizeof(*cipher_ctx));
 }
 
 /**
@@ -203,7 +229,7 @@ static inline void clear_block_cipher_ctx(BlockCipherContext *ctx) {
  * @return Pointer to the BlockCipherApi structure for the specified cipher, or NULL if not found.
  * @details This function is used to create a block cipher API based on the specified name.
  */
-const BlockCipherApi *block_cipher_factory(const char *name);
+const BlockCipherApi *block_cipher_factory(const char *cipher_name);
 
 /**
  * @brief Factory function to create a block cipher API.
@@ -213,7 +239,7 @@ const BlockCipherApi *block_cipher_factory(const char *name);
  *          It allows for dynamic selection of the cipher at runtime, making it easier to switch between
  *          different ciphers without changing the code that uses them.
  */
-void print_cipher_internal(const BlockCipherContext* ctx, const char* cipher_type);
+void print_cipher_internal(const BlockCipherContext* cipher_ctx, const char* cipher_type);
 
 #ifdef __cplusplus
 }

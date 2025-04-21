@@ -89,7 +89,9 @@
     "wordsize.h": "c",
     "file.h": "c",
     "mode_api.h": "c",
-    "signal.h": "c"
+    "signal.h": "c",
+    "block_cipher_aria.h": "c",
+    "execinfo.h": "c"
   },
   "files.exclude": {
     "**/*.vo": true,

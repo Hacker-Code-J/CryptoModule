@@ -24,7 +24,7 @@ typedef uint8_t    u8;
 typedef uint32_t   u32;
 typedef uint64_t   u64;
 
-/* Optionally define convenience ¡°enums¡±, ¡°error codes¡±, or ¡°global¡± functions*/
+/* Optionally define convenience ï¿½ï¿½enumsï¿½ï¿½, ï¿½ï¿½error codesï¿½ï¿½, or ï¿½ï¿½globalï¿½ï¿½ functions*/
 typedef enum {
     CRYPTOMODULE_OK = 0,
     CRYPTOMODULE_ERR_INVALID_INPUT,
@@ -40,16 +40,36 @@ extern "C" {
 cryptomodule_status_t cryptomodule_init(void);
 cryptomodule_status_t cryptomodule_cleanup(void);
 
+/* Crypto Module */
+typedef struct {
+    const char *name;
+    cryptomodule_status_t (*init)(void);
+    cryptomodule_status_t (*cleanup)(void);
+} CryptoModuleApi;
+typedef struct {
+    const CryptoModuleApi *api;
+} CryptoModuleContext;
+typedef struct {
+    const CryptoModuleApi *api;
+    CryptoModuleContext *ctx;
+} CryptoModuleInternal;
+
+/* Core Header */
+#include "cryptomodule_utils.h"
+#include "cryptomodule_test.h"
+
 /* Block ciphers */
 #include "block_cipher/block_cipher_api.h"
-#include "block_cipher/block_cipher_aes.h"
+// #include "block_cipher/block_cipher_aes.h"
+// #include "block_cipher/block_cipher_aria.h"
+// #include "block_cipher/block_cipher_lea.h"
 
 /* Modes of operation */
 #include "mode/mode_api.h"
-// #include "ecb.h"
-// #include "cbc.h"
-// #include "ctr.h"
-// #include "gcm.h"
+// #include "mode/mode_ecb.h"
+// #include "mode/mode_cbc.h"
+// #include "mode/mode_ctr.h"
+// #include "mode/mode_gcm.h"
 
 /* RNG */
 // #include "ctr_drbg.h"

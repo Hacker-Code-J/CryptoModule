@@ -22,8 +22,8 @@ const BlockCipherApi* block_cipher_factory(const char *name) {
     return NULL;
 }
 
-void print_cipher_internal(const BlockCipherContext* ctx, const char* cipher_type) {
-    if (ctx == NULL) {
+void print_cipher_internal(const BlockCipherContext* cipher_ctx, const char* cipher_type) {
+    if (cipher_ctx == NULL) {
         printf("BlockCipherContext is NULL\n");
         return;
     }
@@ -40,34 +40,34 @@ void print_cipher_internal(const BlockCipherContext* ctx, const char* cipher_typ
 
     printf("| %-20s | %-20p | %-20ld |\n", 
            "Block Size", 
-           (void*)&ctx->internal_data.aes_internal.block_size, 
-           (long)((unsigned char*)&ctx->internal_data.aes_internal.block_size - (unsigned char*)ctx));
+           (void*)&cipher_ctx->cipher_internal_data.aes_internal.block_size, 
+           (long)((unsigned char*)&cipher_ctx->cipher_internal_data.aes_internal.block_size - (unsigned char*)cipher_ctx));
 
     printf("| %-20s | %-20p | %-20ld |\n", 
            "Key Length", 
-           (void*)&ctx->internal_data.aes_internal.key_len, 
-           (long)((unsigned char*)&ctx->internal_data.aes_internal.key_len - (unsigned char*)ctx));
+           (void*)&cipher_ctx->cipher_internal_data.aes_internal.key_len, 
+           (long)((unsigned char*)&cipher_ctx->cipher_internal_data.aes_internal.key_len - (unsigned char*)cipher_ctx));
 
     printf("| %-20s | %-20p | %-20ld |\n", 
            "Round Keys", 
-           (void*)&ctx->internal_data.aes_internal.round_keys, 
-           (long)((unsigned char*)&ctx->internal_data.aes_internal.round_keys - (unsigned char*)ctx));
+           (void*)&cipher_ctx->cipher_internal_data.aes_internal.round_keys, 
+           (long)((unsigned char*)&cipher_ctx->cipher_internal_data.aes_internal.round_keys - (unsigned char*)cipher_ctx));
 
     printf("| %-20s | %-20p | %-20ld |\n", 
             "Number of Rounds", 
-            (void*)&ctx->internal_data.aes_internal.nr, 
-            (long)((unsigned char*)&ctx->internal_data.aes_internal.nr - (unsigned char*)ctx));
+            (void*)&cipher_ctx->cipher_internal_data.aes_internal.nr, 
+            (long)((unsigned char*)&cipher_ctx->cipher_internal_data.aes_internal.nr - (unsigned char*)cipher_ctx));
 
     printf("----------------------------------------------------------------------\n");
     printf("---------------------------------------------------------------------------------------------\n");
     printf("| %-20s | %-20s | %-20s | %-20s |\n", "Index", "Address", "Offset", "Value");
     printf("---------------------------------------------------------------------------------------------\n");
-    for (long unsigned int i = 0; i < sizeof(ctx->internal_data.aes_internal.round_keys) / sizeof(ctx->internal_data.aes_internal.round_keys[0]); i++) {
+    for (long unsigned int i = 0; i < sizeof(cipher_ctx->cipher_internal_data.aes_internal.round_keys) / sizeof(cipher_ctx->cipher_internal_data.aes_internal.round_keys[0]); i++) {
         printf("| %-20ld | %-20p | %-20ld | %-20X |\n", 
                i, 
-               (void*)&ctx->internal_data.aes_internal.round_keys[i], 
-               (long)((unsigned char*)&ctx->internal_data.aes_internal.round_keys[i] - (unsigned char*)ctx), 
-               ctx->internal_data.aes_internal.round_keys[i]);
+               (void*)&cipher_ctx->cipher_internal_data.aes_internal.round_keys[i], 
+               (long)((unsigned char*)&cipher_ctx->cipher_internal_data.aes_internal.round_keys[i] - (unsigned char*)cipher_ctx), 
+               cipher_ctx->cipher_internal_data.aes_internal.round_keys[i]);
         if ((i + 1) % 8 == 0) {
             printf("---------------------------------------------------------------------------------------------\n");
         }

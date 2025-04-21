@@ -10,8 +10,8 @@
 #include "../../include/block_cipher/block_cipher_aes.h"
 
 /* Forward declarations of static functions. */
-static void aes_init(BlockCipherContext *ctx, const u8 *key, size_t key_len, size_t block_len, BlockCipherDirection dir);
-static void aes_process_block(BlockCipherContext *ctx, const u8 *in, u8 *out, BlockCipherDirection dir);
+static block_cipher_status_t aes_init(BlockCipherContext *ctx, const u8 *key, size_t key_len, size_t block_len, BlockCipherDirection dir);
+static block_cipher_status_t aes_process(BlockCipherContext *ctx, const u8 *in, u8 *out, BlockCipherDirection dir);
 static void aes_dispose(BlockCipherContext *ctx);
 
 void aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk);
@@ -25,10 +25,10 @@ void aes_decrypt(const u8 *in, u8 *out, const u32 *rk, int r);
  *          and disposal functions.
  */
 static const BlockCipherApi AES_API = {
-    .name          = "AES",
-    .init          = aes_init,
-    .process_block = aes_process_block,
-    .dispose       = aes_dispose
+    .cipher_name          = "AES",
+    .cipher_init          = aes_init,
+    .cipher_process       = aes_process,
+    .cipher_dispose       = aes_dispose
 };
 
 /**
@@ -201,38 +201,38 @@ void aes_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk) {
     // return BLOCK_CIPHER_OK_KEY_EXPANSION;
 }
 
-void aes_init(BlockCipherContext *ctx, const u8 *key, size_t key_len, size_t block_len, BlockCipherDirection dir) {
-    if (!ctx || !key) {
+block_cipher_status_t aes_init(BlockCipherContext *cipher_ctx, const u8 *key, size_t key_len, size_t block_len, BlockCipherDirection dir) {
+    if (!cipher_ctx || !key) {
         fprintf(stderr, "Invalid context or key pointer\n");
-        return;
-    }
-    if (block_len != AES_BLOCK_SIZE) {
-        fprintf(stderr, "Invalid block length: %zu\n", block_len);
-        return;
+        return BLOCK_CIPHER_ERR_UNKNOWN;
     }
     if (key_len != AES128_KEY_SIZE && key_len != AES192_KEY_SIZE && key_len != AES256_KEY_SIZE) {
         fprintf(stderr, "Invalid key length: %zu\n", key_len);
-        return;
+        return BLOCK_CIPHER_ERR_INVALID_KEY;
+    }
+    if (block_len != AES_BLOCK_SIZE) {
+        fprintf(stderr, "Invalid block length: %zu\n", block_len);
+        return BLOCK_CIPHER_ERR_INVALID_BLOCK;
     }
 
-    ctx->internal_data.aes_internal.block_size = block_len;
-    ctx->internal_data.aes_internal.key_len = key_len;
+    cipher_ctx->cipher_internal_data.aes_internal.block_size = block_len;
+    cipher_ctx->cipher_internal_data.aes_internal.key_len = key_len;
     switch(key_len) {
-        case AES128_KEY_SIZE: ctx->internal_data.aes_internal.nr = AES128_NUM_ROUNDS; break;
-        case AES192_KEY_SIZE: ctx->internal_data.aes_internal.nr = AES192_NUM_ROUNDS; break;
-        case AES256_KEY_SIZE: ctx->internal_data.aes_internal.nr = AES256_NUM_ROUNDS; break;
+        case AES128_KEY_SIZE: cipher_ctx->cipher_internal_data.aes_internal.nr = AES128_NUM_ROUNDS; break;
+        case AES192_KEY_SIZE: cipher_ctx->cipher_internal_data.aes_internal.nr = AES192_NUM_ROUNDS; break;
+        case AES256_KEY_SIZE: cipher_ctx->cipher_internal_data.aes_internal.nr = AES256_NUM_ROUNDS; break;
     }
-    memset(ctx->internal_data.aes_internal.round_keys, 0,
-           sizeof(ctx->internal_data.aes_internal.round_keys));
+    memset(cipher_ctx->cipher_internal_data.aes_internal.round_keys, 0,
+           sizeof(cipher_ctx->cipher_internal_data.aes_internal.round_keys));
 
     /* Key expansion */
     // block_cipher_status_t status = BLOCK_CIPHER_OK_INITIALIZATION;
     switch (dir) {
         case BLOCK_CIPHER_ENCRYPTION:
-            aes_set_encrypt_key(key, key_len, ctx->internal_data.aes_internal.round_keys);
+            aes_set_encrypt_key(key, key_len, cipher_ctx->cipher_internal_data.aes_internal.round_keys);
             break;
         case BLOCK_CIPHER_DECRYPTION:
-            aes_set_decrypt_key(key, key_len, ctx->internal_data.aes_internal.round_keys);
+            aes_set_decrypt_key(key, key_len, cipher_ctx->cipher_internal_data.aes_internal.round_keys);
             break;
         default:
             fprintf(stderr, "Invalid direction: %s\n", block_cipher_direction_to_string(dir));
@@ -240,6 +240,8 @@ void aes_init(BlockCipherContext *ctx, const u8 *key, size_t key_len, size_t blo
 
     }
     // printf("[RSP] Final: %s\n", block_cipher_status_to_string(status));
+
+    return BLOCK_CIPHER_OK;
 }
 
 void aes_encrypt(const u8 *in, u8 *out, const u32 *rk, int r) {
@@ -505,27 +507,29 @@ void aes_decrypt(const u8 *in, u8 *out, const u32 *rk, int r) {
     // }
 }
 
-void aes_process_block(BlockCipherContext *ctx, const u8 *in, u8 *out, BlockCipherDirection dir) {
-    if (!ctx || !in || !out) {
+block_cipher_status_t aes_process(BlockCipherContext *cipher_ctx, const u8 *in, u8 *out, BlockCipherDirection dir) {
+    if (!cipher_ctx || !in || !out) {
         fprintf(stderr, "Invalid context, input, or output pointer\n");
-        return;
+        return BLOCK_CIPHER_ERR_UNKNOWN;
     }
     
     // printf("%s\n", block_cipher_direction_to_string(dir));
 
     if (dir == BLOCK_CIPHER_ENCRYPTION) {
-        aes_encrypt(in, out, ctx->internal_data.aes_internal.round_keys, ctx->internal_data.aes_internal.nr);
+        aes_encrypt(in, out, cipher_ctx->cipher_internal_data.aes_internal.round_keys, cipher_ctx->cipher_internal_data.aes_internal.nr);
     } else if (dir == BLOCK_CIPHER_DECRYPTION) {
-        aes_decrypt(in, out, ctx->internal_data.aes_internal.round_keys, ctx->internal_data.aes_internal.nr);
+        aes_decrypt(in, out, cipher_ctx->cipher_internal_data.aes_internal.round_keys, cipher_ctx->cipher_internal_data.aes_internal.nr);
     } else {
         fprintf(stderr, "Invalid block cipher direction\n");
-        return;
+        return BLOCK_CIPHER_ERR_UNSUPPORTED_DIRECTION;
     }
+
+    return BLOCK_CIPHER_OK;
 }
 
-void aes_dispose(BlockCipherContext *ctx) {
-    if (!ctx) return;
+void aes_dispose(BlockCipherContext *cipher_ctx) {
+    if (!cipher_ctx) return;
     /* Clear out the AES portion of the union. */
-    memset(&ctx->internal_data.aes_internal, 0,
-           sizeof(ctx->internal_data.aes_internal));
+    memset(&cipher_ctx->cipher_internal_data.aes_internal, 0,
+           sizeof(cipher_ctx->cipher_internal_data.aes_internal));
 }
