@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import re
 
-INPUT_FILE  = "./block_cipher_tv/nist_aes/ECBVarTxt256.fax"           # your original file
-OUTPUT_FILE = "./block_cipher_tv/nist_aes/re_ECBVarTxt256.fax"  # new file with fixed COUNTs
+INPUT_FILE  = "./block_cipher_tv/nist_aes/CBCVarTxt256.rsp"           # your original file
+OUTPUT_FILE = "./block_cipher_tv/nist_aes/re_CBCVarTxt256.fax"  # new file with fixed COUNTs
 OFFSET      = 256
 
 def bump_counts(inp_path, out_path, offset):

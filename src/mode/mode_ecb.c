@@ -18,8 +18,7 @@ static void ecb_init(ModeOfOperationContext *mode_ctx,
     u8 *in, size_t in_len,
     BlockCipherDirection dir);
 static void ecb_update(ModeOfOperationContext *mode_ctx,
-    const u8 *in, size_t in_len,
-    u8 *out, size_t out_len,
+    const u8 *in, u8 *out, size_t data_tot_len,
     BlockCipherDirection dir);
             
 static void ecb_dispose(ModeOfOperationContext *mode_ctx);
@@ -116,67 +115,40 @@ static void ecb_init(ModeOfOperationContext *mode_ctx,
 
 static void ecb_update(
     ModeOfOperationContext *mode_ctx,
-    const u8 *in, size_t in_len,
-    u8 *out, size_t out_len,
+    const u8 *in, u8 *out, size_t data_tot_len,
     BlockCipherDirection dir) {
     
+    if (!mode_ctx || !in || !out) {
+        fprintf(stderr, "Invalid mode context or input/output pointers\n");
+        return;
+    }
+    if (data_tot_len % BLOCK_SIZE != 0) {
+        fprintf(stderr, "Invalid data length for ECB mode: %zu\n", data_tot_len);
+        return;
+    }
+    if (mode_ctx->cipher_ctx->cipher_api->cipher_process(
+            mode_ctx->cipher_ctx, in, out, dir) != BLOCK_CIPHER_OK) {
+        fprintf(stderr, "Error processing block in ECB mode\n");
+        return;
+    }
+
+    // Update the total length of data processed
+    // mode_ctx->total_len += data_tot_len;
+    // Clear the buffer
+    memset(mode_ctx->buffer, 0, sizeof(mode_ctx->buffer));
+    mode_ctx->buffer_len = 0; // No buffered data
+    mode_ctx->mode_internal_data.ecb_internal.dummy = 0; // ECB has no internal state
     
-    mode_ctx->block_size = BLOCK_SIZE;
-    size_t block_size = mode_ctx->block_size;
-
-    printf("ECB Update: in_len=%zu, out_len=%zu\n", in_len, out_len);
-    printf("ECB Update: buffer_len=%zu\n", mode_ctx->buffer_len);
-    printf("ECB Update: block_size=%zu\n", block_size);
-
-    // Process any previously buffered bytes with new input to make a full block
-    if (mode_ctx->buffer_len > 0) {
-        size_t needed = block_size - mode_ctx->buffer_len;
-        if (in_len >= needed) {
-            // fill the buffer to make a full block
-            for (size_t i = 0; i < needed; ++i) {
-                mode_ctx->buffer[mode_ctx->buffer_len + i] = in[i];
-            }
-            in += needed;
-            in_len -= needed;
-            mode_ctx->buffer_len += needed;
-            // Now buffer has a full block
-            mode_ctx->cipher_ctx->cipher_api->cipher_process(mode_ctx->cipher_ctx, mode_ctx->buffer, out, dir);
-            out_len += block_size;
-            mode_ctx->buffer_len = 0;
-            out += block_size;
-        } else {
-            // Not enough to complete a block, store input in buffer and return
-            for (size_t i = 0; i < in_len; ++i) {
-                mode_ctx->buffer[mode_ctx->buffer_len + i] = in[i];
-            }
-            mode_ctx->buffer_len += in_len;
-            // return true; // output_lten remains 0 (no new output yet)
+    // Process the input data for each block
+    for (size_t i = 0; i < data_tot_len; i += BLOCK_SIZE) {
+        if (mode_ctx->cipher_ctx->cipher_api->cipher_process(
+                mode_ctx->cipher_ctx, in + i, out + i, dir) != BLOCK_CIPHER_OK) {
+            fprintf(stderr, "Error processing block in ECB mode\n");
+            return;
         }
     }
-
-    printf("%zu bytes (in_len )\n", in_len);
-    printf("%zu bytes (out_len)\n", out_len);
-    printf("%zu bytes (block_size)\n", block_size);
-
-    // Process full blocks from remaining input
-    // while (in_len >= block_size) {
-    //     printf("%zu bytes left to process\n", in_len);
-    //     printf("%zu bytes left to write\n", out_len);
-    //     printf("%zu bytes for block size\n", block_size);
-    //     mode_ctx->cipher_ctx->cipher_api->cipher_process(mode_ctx->cipher_ctx, in, out, dir);
-    //     in += block_size;
-    //     in_len -= block_size;
-    //     out_len += block_size;
-    //     out += block_size;
-    // }
-    // Buffer any leftover partial block
-
-    if (in_len > 0) {
-        for (size_t i = 0; i < in_len; ++i) {
-            mode_ctx->buffer[i] = in[i];
-        }
-        mode_ctx->buffer_len = in_len;
-    }
+    
+    
 }
 
 static void ecb_dispose(ModeOfOperationContext *mode_ctx) {

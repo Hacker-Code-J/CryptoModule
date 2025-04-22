@@ -334,17 +334,17 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
     char filename_rsp[100];
     
     if (type == BLOCK_CIPHER_AES128) {
-        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECB_KAT_AES128.fax");
-        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECB_KAT_AES128.req");
-        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECB_KAT_AES128.rsp");
+        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECB_AES128_KAT.fax");
+        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECB_AES128_KAT.req");
+        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECB_AES128_KAT.rsp");
     } else if (type == BLOCK_CIPHER_AES192) {
-        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECB_KAT_AES192.fax");
-        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECB_KAT_AES192.req");
-        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECB_KAT_AES192.rsp");
+        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECB_AES192_KAT.fax");
+        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECB_AES192_KAT.req");
+        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECB_AES192_KAT.rsp");
     } else if (type == BLOCK_CIPHER_AES256) {
-        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECB_KAT_AES256.fax");
-        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECB_KAT_AES256.req");
-        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECB_KAT_AES256.rsp");
+        snprintf(filename_fax, sizeof(filename_fax), "%s%s", file_path, "ECB_AES256_KAT.fax");
+        snprintf(filename_req, sizeof(filename_req), "%s%s", file_path, "ECB_AES256_KAT.req");
+        snprintf(filename_rsp, sizeof(filename_rsp), "%s%s", file_path, "ECB_AES256_KAT.rsp");
     } else {
         fprintf(stderr, "[VERIFY] Unknown BlockCipherType: %d\n", type);
         return;
