@@ -1,0 +1,48 @@
+\documentclass[tikz,border=5pt]{standalone}
+\usepackage{tikz}
+\usetikzlibrary{shapes.multipart, arrows.meta, positioning}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{newpxtext,newpxmath}
+\usepackage{sectsty}
+\begin{document}
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm, font=\scriptsize]
+	% 1) Draw alignment grid (comment out in final)
+%	\draw[step=0.5cm,gray!30] (0,0) grid (12,6);
+%	\draw[->] (0,0) to (12,0);
+%	\draw[->] (0,0) to (0,6);
+	
+	% 2) Bottom bar: Header | Seq. | Data
+	\node[rectangle,draw,minimum width=2.5cm,minimum height=.5cm] (hdr) at (1.75,.25) {Header};
+	\node[rectangle,draw,minimum width=1.5cm, minimum height=.5cm] (seq) at (3.75,.25) {Seq.};
+	\node[rectangle,draw,minimum width=5cm, minimum height=.5cm] (data) at (7,.25) {Data};
+	
+	% 3) GCM Encryption box
+	\node[rectangle,draw,rounded corners, minimum width=4cm, minimum height=1cm] (gcm) at (7,2) {GCM Decryption};
+	
+	% 4) Top bar: Header | Seq. | Encrypted Data | ICV
+	\node[rectangle,draw,minimum width=2.5cm,minimum height=.5cm] (hdr2) at (1.75,4.25) {Header};
+	\node[rectangle,draw,minimum width=1.5cm, minimum height=.5cm] (seq2) at (3.75,4.25) {Seq.};
+	\node[rectangle,draw,fill=gray!20,minimum width=5cm, minimum height=.5cm] (enc) at (7,4.25) {Decrypted Data};
+	\node[rectangle,draw,minimum width=2cm, minimum height=.5cm] (icv) at (10.5,4.25) {ICV};
+	
+	% 5) Plaintext arrow
+	\draw[<-] (data.north) -- node[fill=white] {\textit{Plaintext}} (gcm.south);
+	
+	% 6) Pass‐through dashed lines for Header & Seq
+	\draw[<-, dotted] (hdr.north) -- (hdr2.south);
+	\draw[<-, dotted] (seq.north) -- (seq2.south);
+	
+	% 7) IV arrow
+	\draw[->] (seq2.south) -- ++(0,-.5) -- ++(2.25,0) node[midway, fill=white] {\textit{IV}} -- ++(0,-1);
+	
+	% 8) Additional‐Auth‐Data (dashed)
+	\draw[->] (hdr2.south) -- ++(0,-1) -- ++(3.75,0) node[midway, fill=white] {\textit{Addtl Auth Data}} --++(0,-.5);
+	
+	% 9) Ciphertext output
+	\draw[<-] (gcm.north) -- node[fill=white] {\textit{Ciphertext}} (enc.south);
+	
+	% 10) Authentication Tag output
+	\draw[<-] (gcm.east) --  ++(1.5,0) -| node[fill=white] {\textit{Authentication Tag}} (icv.south);
+\end{tikzpicture}
+\end{document}

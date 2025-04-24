@@ -7,8 +7,8 @@
 #include <execinfo.h>
 #include <unistd.h>
 
-// #define BLOCK_CIPHER_TEST_FLAG 1
-// #define MODE_OF_OPERATION_TEST_FLAG 1
+#define BLOCK_CIPHER_TEST_FLAG 1
+#define MODE_OF_OPERATION_TEST_FLAG 1
 // #define PADDING_TEST_FLAG 1
 
 int main(void) {

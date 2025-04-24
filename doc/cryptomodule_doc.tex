@@ -13,6 +13,7 @@
 \usepackage{fancyhdr}                        % Headers and footers
 \usepackage{setspace}                        % Line spacing
 \usepackage{hyperref}                        % Hyperlinks
+\bibliographystyle{alpha}
 \usepackage{enumitem}                        % Customized lists
 \usepackage{lmodern}                         % Enhanced fonts
 \usepackage{xcolor}                          % Color definitions
@@ -93,6 +94,7 @@
 \newcommand{\floor}[1]{\lfloor #1 \rfloor}
 \newcommand{\ceil}[1]{\lceil #1 \rceil}
 \newcommand{\AES}{\textsf{AES}}
+\newcommand{\F}{\mathbb{F}}
 
 %-------------------------
 % Custom Fonts and Colors
@@ -175,7 +177,7 @@
 %		\includegraphics[width=0.3\textwidth]{logo.png}\par\vspace{1cm}
 
 \HRule \\[0.4cm]
-{\Huge \sffamily \bfseries Cryptographic S/W Modules with C}\\[0.4cm]
+{\Huge \sffamily \bfseries Cryptographic Algorithms with C}\\[0.4cm]
 \HRule \\[1.5cm]
 
 {\Large Design, Implementation, and Integration of Core Crypto Modules}\\[0.5cm]
@@ -612,7 +614,9 @@ typedef struct __ModeOfOperationContext__ {
 
 \subsection{CTR}
 
-\subsection{GCM}
+\newpage
+\section{Galois Counter Mode (GCM)}
+\input{mode/gcm.tex}
 
 \newpage
 %-----------------------------------------------------------------------
@@ -668,6 +672,9 @@ typedef struct __ModeOfOperationContext__ {
 %%-----------------------------------------------------------------------
 %\chapter{FAQ / Troubleshooting}
 %% Common errors, solutions, performance tuning
+
+\newpage
+\bibliography{bibliography}
 
 \newpage
 \appendix
