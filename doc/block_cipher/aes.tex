@@ -1,18 +1,33 @@
 \subsection{AES (Advanced Encryption Standard)}
-\begin{table}[h!]\centering\renewcommand{\arraystretch}{1.25} % Increase row height by 1.5 times
+\begin{table}[h!]
+	\centering
+	\renewcommand{\arraystretch}{1.25} % Increase row height
 	\caption{Parameters of the Block Cipher AES (1-word = 32-bit)}
-	\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}c||cccccc}
+	\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}c c c c c c c}
 		\toprule[1.2pt]
-		\multirow{3}{*}{Algorithms} & Block & Key & Number of & Round-Key & Number of & Total Size of\\
-		& Size & Length & Rounds &  Length & Round-Keys & Round-Keys \\
-		& ($N_b$-word) & ($N_k$-word) & ($N_r$)& (word) & ($N_r+1$)& ($N_b(N_r+1)$)\\
-		\hline\hline
-		\textsf{AES-128} & 4 & 4 & 10 & 4 & 11 & 44 (176-byte) \\
-		\textsf{AES-192} & 4 & 6 & 12 & 4 & 13 & 52 (208-byte) \\
-		\textsf{AES-256} & 4 & 8 & 14 & 4 & 15 & 60 (240-byte) \\
+		\textbf{Alg.} & $\boldsymbol{n}$ (bit) & $\boldsymbol{k}$ (bit) & \textbf{\# of Rounds} & \textbf{RK Size} (bit) & \textbf{\# of RKs} & \textbf{Total RK Size} (bit) \\
+		\midrule
+		\textsf{AES--128} & 128 & 128 & 10 & 128 (4-word) & 11 & 1408 (44-word) \\
+		\textsf{AES--192} & 128 & 192 & 12 & 128 (4-word) & 13 & 1664 (52-word) \\
+		\textsf{AES--256} & 128 & 256 & 14 & 128 (4-word) & 15 & 1920 (60-word) \\
 		\bottomrule[1.2pt]
 	\end{tabular*}
 \end{table}
+
+%\begin{table}[h!]\centering\renewcommand{\arraystretch}{1.25} % Increase row height by 1.5 times
+%	\caption{Parameters of the Block Cipher AES (1-word = 32-bit)}
+%	\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}c||cccccc}
+%		\toprule[1.2pt]
+%		\multirow{3}{*}{Algorithms} & Block & Key & Number of & Round-Key & Number of & Total Size of\\
+%		& Size & Length & Rounds &  Length & Round-Keys & Round-Keys \\
+%		& ($N_b$-word) & ($N_k$-word) & ($N_r$)& (word) & ($N_r+1$)& ($N_b(N_r+1)$)\\
+%		\hline\hline
+%		\textsf{AES-128} & 4 & 4 & 10 & 4 & 11 & 44 (176-byte) \\
+%		\textsf{AES-192} & 4 & 6 & 12 & 4 & 13 & 52 (208-byte) \\
+%		\textsf{AES-256} & 4 & 8 & 14 & 4 & 15 & 60 (240-byte) \\
+%		\bottomrule[1.2pt]
+%	\end{tabular*}
+%\end{table}
 
 %\begin{tikzpicture}[>=stealth, node distance=0cm, scale=.9]
 %	% Set font for nodes to a small monospace for clarity
@@ -159,57 +174,43 @@
 %	\draw[->] ({\vtX + \vtWidth}, {-(4 * \ptrH + \halfPtrH)}) -- (funcDisp.west);
 %\end{tikzpicture}
 
-\begin{lstlisting}[style=cstyle, caption={include/block\_cipher/block\_cipher.h}, captionpos=t]
-/* Forward declaration for the context. */
-typedef struct BlockCipherContext BlockCipherContext;
 
-/* The vtable or function pointer set describing any block cipher. */
-typedef struct BlockCipherApi {
-	const char *name; /* e.g. "AES" or "MyCipher" */
-	
-	/* Initialize the cipher with the chosen block size and key. */
-	int (*init)(
-		BlockCipherContext* ctx,
-		size_t block_size,
-		const u8* key,
-		size_t key_len
-	);
-	/* Encrypt exactly one block. */
-	void (*encrypt_block)(
-		BlockCipherContext* ctx,
-		const u8* plaintext,
-		u8* ciphertext
-	);
-	/* Decrypt exactly one block. */
-		void (*decrypt_block)(
-		BlockCipherContext* ctx,
-		const u8* ciphertext,
-		u8* plaintext
-	);
-	/* Clean up resources, if needed. */
-	void (*dispose)(
-		BlockCipherContext* ctx
-	);
-	
-} BlockCipherApi;
-
-/* The context structure storing state. */
-struct BlockCipherContext {
-	const BlockCipherApi *api;  
-	u8 internal_data[256]; /* Example placeholder for key schedule, etc. */
-};
-\end{lstlisting}
 \begin{lstlisting}[style=cstyle, caption={include/block\_cipher/block\_cipher\_aes.h}, captionpos=t]
+/* Get the AES block cipher vtable. */
 const BlockCipherApi* get_aes_api(void);
+
+void aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk);
+void aes_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk);
+void aes_encrypt(const u8 *in, u8 *out, const u32 *rk, int r);
+void aes_decrypt(const u8 *in, u8 *out, const u32 *rk, int r);
 \end{lstlisting}
 \begin{lstlisting}[style=cstyle, caption={src/block\_cipher/block\_cipher\_aes.c}, captionpos=t]
-typedef struct AesInternal {
-	size_t block_size;  /* Typically must be 16 for AES */
-	size_t key_len;     /* 16, 24, or 32 for AES-128/192/256 */
-	u32 round_keys[60]; 
-	int nr;             /* e.g., 10 for AES-128, 12, or 14... */
-} AesInternal;
+/* Forward declarations of static functions. */
+static block_cipher_status_t aes_init(
+	BlockCipherContext *ctx, 
+	const u8 *key, 
+	size_t key_len, 
+	size_t block_len, 
+	BlockCipherDirection dir);
+static block_cipher_status_t aes_process(
+	BlockCipherContext *ctx, 
+	const u8 *in,
+	u8 *out, 
+	BlockCipherDirection dir);
+static void aes_dispose(BlockCipherContext *ctx);
+
+/* The AES block cipher API. */
+static const BlockCipherApi AES_API = {
+	.cipher_name          = "AES",
+	.cipher_init          = aes_init,
+	.cipher_process       = aes_process,
+	.cipher_dispose       = aes_dispose
+};
+
+/* Get the AES block cipher API. */
+const BlockCipherApi *get_aes_api(void) { return &AES_API; }
 \end{lstlisting}
+\newpage
 
 %\begin{lstlisting}
 %/* 
@@ -415,5 +416,102 @@ typedef struct AesInternal {
 %\end{itemize}
 
 \subsection{ARIA (Academy, Research Institute, and Agency)}
+\begin{table}[h!]
+	\centering
+	\renewcommand{\arraystretch}{1.25} % Increase row height
+	\caption{Parameters of the Block Cipher ARIA (1-word = 32-bit)}
+	\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}c c c c c c c}
+		\toprule[1.2pt]
+		\textbf{Alg.} & $\boldsymbol{n}$ (bit) & $\boldsymbol{k}$ (bit) & \textbf{\# of Rounds} & \textbf{RK Size} (bit) & \textbf{\# of RKs} & \textbf{Total RK Size} (bit) \\
+		\midrule
+		\textsf{ARIA--128} & 128 & 128 & 12 & 128 (4-word) & 13 & 1664 (52-word) \\
+		\textsf{ARIA--192} & 128 & 192 & 14 & 128 (4-word) & 15 & 1920 (60-word) \\
+		\textsf{ARIA--256} & 128 & 256 & 16 & 128 (4-word) & 17 & 2176 (68-word) \\
+		\bottomrule[1.2pt]
+	\end{tabular*}
+\end{table}
+\begin{lstlisting}[style=cstyle, caption={include/block\_cipher/block\_cipher\_aria.h}, captionpos=t]
+/* Get the ARIA block cipher vtable. */
+const BlockCipherApi* get_aria_api(void);
 
+void aria_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk);
+void aria_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk);
+void aria_encrypt(const u8 *in, u8 *out, const u32 *rk, int r);
+void aria_decrypt(const u8 *in, u8 *out, const u32 *rk, int r);
+\end{lstlisting}
+\begin{lstlisting}[style=cstyle, caption={src/block\_cipher/block\_cipher\_aria.c}, captionpos=t]
+/* Forward declarations of static functions. */
+static block_cipher_status_t aria_init(
+	BlockCipherContext *ctx, 
+	const u8 *key, 
+	size_t key_len, 
+	size_t block_len, 
+BlockCipherDirection dir);
+static block_cipher_status_t aria_process(
+	BlockCipherContext *ctx, 
+	const u8 *in, 
+	u8 *out, 
+	BlockCipherDirection dir);
+static void aria_dispose(BlockCipherContext *ctx);
+
+/* The ARIA block cipher API. */
+static const BlockCipherApi ARIA_API = {
+	.cipher_name    = "ARIA",
+	.cipher_init    = aria_init,
+	.cipher_process = aria_process,
+	.cipher_dispose = aria_dispose
+};
+/* Get the ARIA block cipher API. */
+const BlockCipherApi* get_aria_api(void) { return &ARIA_API; }
+\end{lstlisting}
+
+\newpage
 \subsection{LEA (Lightweight Encryption Algorithm)}
+\begin{table}[h!]
+	\centering
+	\renewcommand{\arraystretch}{1.25} % Increase row height
+	\caption{Parameters of the Block Cipher LEA (1-word = 32-bit)}
+	\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}c c c c c c c}
+		\toprule[1.2pt]
+		\textbf{Alg.} & $\boldsymbol{n}$ (bit) & $\boldsymbol{k}$ (bit) & \textbf{\# of Rounds} & \textbf{RK Size} (bit) & \textbf{\# of RKs} & \textbf{Total RK Size} (bit) \\
+		\midrule
+		\textsf{LEA--128}  & 128 & 128 & 24 & 192 (6-word) & 24 & 4608 (144-word) \\
+		\textsf{LEA--192}  & 128 & 192 & 28 & 192 (6-word) & 28 & 5376 (168-word) \\
+		\textsf{LEA--256}  & 128 & 256 & 32 & 192 (6-word) & 32 & 6144 (192-word) \\
+		\bottomrule[1.2pt]
+	\end{tabular*}
+\end{table}
+\begin{lstlisting}[style=cstyle, caption={include/block\_cipher/block\_cipher\_aria.h}, captionpos=t]
+/* Get the LEA block cipher vtable. */
+const BlockCipherApi* get_lea_api(void);
+
+void lea_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk);
+void lea_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk);
+void lea_encrypt(const u8 *in, u8 *out, const u32 *rk, int r);
+void lea_decrypt(const u8 *in, u8 *out, const u32 *rk, int r);
+\end{lstlisting}
+\begin{lstlisting}[style=cstyle, caption={src/block\_cipher/block\_cipher\_aria.c}, captionpos=t]
+/* Forward declarations of static functions. */
+static block_cipher_status_t lea_init(
+	BlockCipherContext *ctx, 
+	const u8 *key, 
+	size_t key_len, 
+	size_t block_len, 
+	BlockCipherDirection dir);
+static block_cipher_status_t lea_process(
+	BlockCipherContext *ctx, 
+	const u8 *in, 
+	u8 *out, 
+	BlockCipherDirection dir);
+static void lea_dispose(BlockCipherContext *ctx);
+
+/* The LEA block cipher API. */
+static const BlockCipherApi LEA_API = {
+	.cipher_name          = "LEA",
+	.cipher_init          = lea_init,
+	.cipher_process       = lea_process,
+	.cipher_dispose       = lea_dispose
+};
+/* Get the LEA block cipher API. */
+const BlockCipherApi *get_lea_api(void) { return &LEA_API; }
+\end{lstlisting}

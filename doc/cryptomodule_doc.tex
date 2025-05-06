@@ -20,13 +20,27 @@
 \usepackage{array}                           % Table formatting
 \usepackage{listings}                        % For code listings
 
+\usepackage{multicol}
+
+\usepackage{dirtree}
+% adjust the indent size if you like:
+%\renewcommand{\DTbaselinestretch}{1.1}
+%\setcounter{DTlinenosize}{0}6
+
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,calc,positioning}
 \input{lib/crypto.symbols}
-\usetikzlibrary{shapes.multipart, arrows.meta, positioning}
+\usetikzlibrary{shapes.multipart, arrows.meta, positioning, matrix}
 \usetikzlibrary{trees}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.17}
+\usepackage{pgfgantt}
+% define your status‐styles once
+\tikzset{
+	notstarted/.style = {circle,draw,fill=gray!20,minimum size=6mm,inner sep=0pt},
+	inprogress/.style = {circle,draw,fill=yellow!60,minimum size=6mm,inner sep=0pt},
+	done/.style        = {circle,draw,fill=green!60,minimum size=6mm,inner sep=0pt},
+}
 
 \usepackage{amsmath, amssymb, amsfonts, amsthm, mathtools}
 \usepackage{commath}
@@ -118,8 +132,10 @@
 }
 \lstdefinestyle{cstyle}{
 	language=C,
+	tabsize=3,
 	basicstyle=\small\ttfamily,
 	keywordstyle=\bfseries\color{blue},
+	morekeywords={printf, scanf, main, size_t, uint8_t, uint16_t, uint32_t, uint64_t, u8, u32},
 	commentstyle=\itshape\color{teal!70!black},
 	stringstyle=\color{orange!90!black},
 	numbers=left,
@@ -177,10 +193,10 @@
 %		\includegraphics[width=0.3\textwidth]{logo.png}\par\vspace{1cm}
 
 \HRule \\[0.4cm]
-{\Huge \sffamily \bfseries Cryptographic Algorithms with C}\\[0.4cm]
+{\Huge \sffamily \bfseries Cryptographic-Module\\ [0.2cm]  Source-Code Development Manual}\\[0.4cm]
 \HRule \\[1.5cm]
 
-{\Large Design, Implementation, and Integration of Core Crypto Modules}\\[0.5cm]
+{\Large Design, Implementation, and Integration of Cryptography Modules}\\[0.5cm]
 {\normalsize Secure, Efficient, High-Performance Cryptographic Software Modules}\\[2cm]
 
 \begin{flushright}
@@ -205,27 +221,42 @@
 \chapter{Project Overview}
 %\section{Purpose and Scope}
 
-I have developed a cryptographic software module in the C language, with an emphasis on high performance and efficiency. This document provides a comprehensive guide to the design, implementation, and integration of cryptographic modules written in C (sometimes assembly). 
+I have developed a cryptographic software module in the \textbf{C} language.
+%, with an emphasis on high performance and efficiency. 
+This document provides a comprehensive guide to the design, implementation, and integration of cryptographic modules written in C (sometimes assembly). 
 %It is intended for developers, security engineers, and maintainers who need to understand the internal structure, coding guidelines, and best practices for working with these modules. By referencing both the C and ASM sources, readers will learn how to optimize cryptographic routines, ensure consistent interfaces, and maintain robust security properties throughout the system.
 \ \\
 \ \\ \noindent
 \textbf{Key Objectives:}
 \begin{itemize}
 	\item Describing the cryptographic primitives and algorithms\par 
-	(block ciphers, hash functions, MACs, signature algorithms, etc.).
+	(block ciphers, hash functions, signature algorithms, etc.).
 	\item Explaining the structure of the source files and headers.
 	\item Providing guidelines for building, testing, and integrating these modules into larger software systems.
 %	\item Highlighting performance optimization strategies in ASM.
 \end{itemize}
 
+\begin{table}[h!]\centering
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|p{11cm}||l}
+	\toprule
+	Section & Description & Status \\
+	\midrule
+	1.1     & Directory layout \& development environment       & Drafted      \\
+	1.2     & Development Environment            & Drafted \\
+	1.3     & TBA             & TBA \\
+	\bottomrule
+\end{tabular*}
+\end{table}
+
+\newpage
 \section{Directory Structure}
-\begin{center}
+\begin{multicols}{2}
 \begin{tikzpicture}[%
 	grow via three points={one child at (0.5,-0.7) and
 		two children at (0.5,-0.7) and (0.5,-1.4)},
 	edge from parent path={(\tikzparentnode.south) |- (\tikzchildnode.west)}]
 	\tikzstyle{every node}=[draw=black,thick,anchor=west, 
-	minimum width=2.25cm, minimum height=.6cm]
+	minimum width=2cm, minimum height=.6cm]
 	\tikzstyle{selected}=[draw=red,fill=red!30]
 	\tikzstyle{optional}=[dashed,fill=gray!50]
 	\node {CryptoModule/}
@@ -239,7 +270,7 @@ I have developed a cryptographic software module in the C language, with an emph
 	child [missing] {}
 	child { node[fill=blue!30, draw=blue] {include}
 		child { node {block\_cipher}
-			child { node[dashed,fill=teal!50] {\texttt{block\_cipher\_api.h}} }
+			child { node[dashed,fill=teal!50] {\texttt{api\_block\_cipher.h}} }
 			child { node {\texttt{block\_cipher\_aes.h}} }
 			child { node {$\cdots$} }
 		}
@@ -247,13 +278,15 @@ I have developed a cryptographic software module in the C language, with an emph
 		child [missing] {}		
 		child [missing] {}
 		child { node {mode}
-			child { node[dashed,fill=teal!50] {\texttt{mode\_api.h}} }
+			child { node[dashed,fill=teal!50] {\texttt{api\_mode.h}} }
+			child { node[] {\texttt{mode\_gcm.h}} }
 			child { node {$\cdots$} }
 		}	
 		child [missing] {}
 		child [missing] {}
+		child [missing] {}
 		child { node {$\cdots$} }
-		child { node[dashed,fill=teal!50] {\texttt{api.h}} }
+		child { node[dashed,fill=teal!50] {\texttt{api\_cryptomodule.h}} }
 	}	
 	child [missing] {}	
 	child [missing] {}
@@ -276,8 +309,10 @@ I have developed a cryptographic software module in the C language, with an emph
 		child [missing] {}
 		child { node {mode}
 			child { node {\texttt{mode\_factory.c}} }
+			child { node {\texttt{mode\_gcm.c}} }
 			child { node {$\cdots$} }
 		}	
+		child [missing] {}
 		child [missing] {}
 		child [missing] {}
 		child { node {$\cdots$} }
@@ -295,11 +330,27 @@ I have developed a cryptographic software module in the C language, with an emph
 	child [missing] {}	
 	child [missing] {}	
 	child [missing] {}	
+	child [missing] {}	
 	child { node[fill=cyan!50, draw=cyan] {tests/} }
 	child { node[fill=orange!50, draw=orange] {\texttt{Makefile}} }
 	;
 \end{tikzpicture}
-\end{center}
+\break
+%\begin{verbatim}
+%src/        % Core implementation files
+%cipher/     % Block ciphers (AES, ARIA, LEA)
+%hash/       % SHA-2, SHA-3, LSH implementations
+%mac/        % HMAC, CMAC, GMAC, etc.
+%rng/        % DRBG and entropy collector
+%include/    % Public headers
+%tests/      % Unit and integration tests
+%vectors/    % NIST and custom test vectors
+%perf/       % Benchmark suites
+%docs/       % Design documents and user guides
+%scripts/    % Build, lint, and analysis scripts
+%\end{verbatim}
+\end{multicols}
+
 %The code base is organized to reflect modular cryptographic primitives and functionality. The main directories and their purposes are outlined below:
 %
 %\begin{itemize}
@@ -389,12 +440,11 @@ I have developed a cryptographic software module in the C language, with an emph
 %	\item A helper function to securely clear sensitive material from memory.
 %\end{itemize}
 %
-\section{My Development Environment}
+\section{Development Environment}
 %To ensure transparency, let me highlight the specific environment in which I developed and tested this module:
-
 \begin{itemize}
-	\item \textbf{Operating System:} 
-\begin{verbatim}
+	\item \textbf{Operating System:} \textbf{\underline{Linux Mint}} (based on Debian and Ubuntu)
+\begin{lstlisting}[numbers=none]
 @>$ cat /etc/os-release
 NAME="Linux Mint"
 VERSION="21.3 (Virginia)"
@@ -408,22 +458,22 @@ BUG_REPORT_URL="http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/
 PRIVACY_POLICY_URL="https://www.linuxmint.com/"
 VERSION_CODENAME=virginia
 UBUNTU_CODENAME=jammy
+\end{lstlisting}
 
-\end{verbatim}
 	
 %	I worked primarily on a Linux environment (Ubuntu 22.04 LTS) with a modern kernel (5.x series).
-	\item \textbf{Compiler:} 
-\begin{verbatim}
+	\item \textbf{Compiler:} \textbf{\underline{GNU Compiler Collection}} 11.4.0
+\begin{lstlisting}[numbers=none]
 @>$	gcc --version
 gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
 Copyright (C) 2021 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-\end{verbatim}
+\end{lstlisting}
 %	\item \textbf{Build System:} The \texttt{make} utility (GNU Make) for building source files and orchestrating tests.
-	\item \textbf{Hardware:} 
+	\item \textbf{Hardware:} \textbf{\underline{AMD Ryzen 7 5800X3D 8-Core Processor}}
 %	An x86-64 CPU with SSE4/AES-NI instructions available (though the code also tested fine on other hardware without AES-NI).
-\begin{verbatim}
+\begin{lstlisting}[numbers=none]
 @>$ lscpu
 Architecture:             x86_64
   CPU op-mode(s):         32-bit, 64-bit
@@ -438,14 +488,27 @@ Vendor ID:                AuthenticAMD
     Thread(s) per core:   2
     CPU max MHz:          3400.0000
     CPU min MHz:          2200.0000
-
-\end{verbatim}
+...
+\end{lstlisting}
 	\item \textbf{Additional Tools:} 
-	\begin{itemize}
-		\item \texttt{valgrind} for memory checks, 
-		\item \texttt{gdb} for debugging, 
-		\item and TBA %\texttt{perf} for performance profiling.
-	\end{itemize}
+	
+`\texttt{valgrind}` for memory checks, 
+\begin{lstlisting}[numbers=none]
+@>$ \valgrind --version
+valgrind-3.18.1
+\end{lstlisting}
+
+`\texttt{gdb}` for debugging, 	
+\begin{lstlisting}[numbers=none]
+@>$ gdb --version 
+GNU gdb (Ubuntu 12.1-0ubuntu1~22.04.2) 12.1
+Copyright (C) 2022 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+\end{lstlisting}
+
+and TBA
 %make --version
 %
 %GNU Make 4.3
@@ -558,11 +621,73 @@ typedef struct __BlockCipherContext__ {
 \begin{figure}[h!]
 \input{memory_layout/BlockCipherContext.tex}
 \end{figure}
-\begin{figure}[h!]\centering
-	\includegraphics[scale=1]{memory_layout/BlockCipherApi.pdf}
-\end{figure}
+%\begin{figure}[h!]\centering
+%	\includegraphics[scale=1]{memory_layout/BlockCipherApi.pdf}
+%\end{figure}
 
+\newpage
+\begin{lstlisting}[style=cstyle, caption={include/block\_cipher/api\_block\_cipher.h}, captionpos=t]
+/* Forward declaration for the context. */
+typedef struct __BlockCipherContext__ BlockCipherContext;
 
+typedef struct __BlockCipherApi__ {
+	const char *cipher_name; /* e.g. "AES" or "MyCipher" */
+	
+	block_cipher_status_t (*cipher_init)(
+		BlockCipherContext* cipher_ctx, 
+		const u8* key, 
+		size_t key_len, 
+		size_t block_len, 
+		BlockCipherDirection dir);
+	block_cipher_status_t (*cipher_process)(
+		BlockCipherContext* cipher_ctx, 
+		const u8* in, 
+		u8* out, 
+		BlockCipherDirection dir);
+	void (*cipher_dispose)(BlockCipherContext* cipher_ctx);
+} BlockCipherApi;
+
+typedef union __CipherInternal__ {
+	struct __aes_internal__ {
+		size_t block_size;      /* Typically must be 16 for AES */
+		size_t key_len;         /* 16, 24, or 32 for AES-128/192/256 */
+		/* max 60 for AES-256 */
+		u32 round_keys[4 * (AES256_NUM_ROUNDS + 1)];     
+		int nr;                 /* e.g., 10 for AES-128, 12, or 14... */
+	} aes_internal;
+	struct __aria_internal__ {
+		size_t block_size;      /* Typically must be 16 for ARIA */
+		size_t key_len;         /* 16, 24, or 32 for ARIA-128/192/256 */
+		/* max 68 for ARIA-256 */
+		u32 round_keys[4 * (ARIA256_NUM_ROUNDS + 1)];     
+		int nr;                 /* e.g., 12 for ARIA-128, 14, or 16... */
+	} aria_internal;
+	struct __lea_internal__ {
+		size_t block_size;      /* Typically must be 16 for LEA */
+		size_t key_len;         /* 16, 24, or 32 for LEA-128/192/256 */
+		/* max 192 for LEA-256 */
+		u32 round_keys[6 * LEA256_NUM_ROUNDS];    
+		int nr;                 /* e.g., 24 for LEA-128, 28, or 32... */
+	} lea_internal;
+} CipherInternal;
+
+struct __BlockCipherContext__ {
+	const BlockCipherApi *cipher_api;  
+	CipherInternal cipher_state; /* Generic internal state for any cipher */
+};
+\end{lstlisting}
+
+\begin{table}[h!]\centering
+	\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|p{11cm}||l}
+		\toprule
+		Subsection & Description & Status \\
+		\midrule
+		2.1.1     & AES (Advanced Encryption Standard) & Drafted      \\
+		2.1.2     & ARIA (Academy, Research Institute, and Agency)  & Drafted \\
+		2.1.3     & LEA (Lightweight Encryption Algorithm) & Drafted \\
+		\bottomrule
+	\end{tabular*}
+\end{table}
 \newpage
 \input{block_cipher/aes}
 % Detailed content about supported block ciphers, usage examples, ASM optimizations
@@ -603,19 +728,19 @@ typedef struct __ModeOfOperationContext__ {
 	ModeInternal internal_data;     // Internal state for the mode
 } ModeOfOperationContext;
 \end{lstlisting}
-\begin{figure}[h!]
-	\input{memory_layout/ModeOfOperationContext.tex}
-\end{figure}
+%\begin{figure}[h!]
+%	\input{memory_layout/ModeOfOperationContext.tex}
+%\end{figure}
 
 \newpage
-\subsection{ECB}
-
-\subsection{CBC}
-
-\subsection{CTR}
-
+\subsection{Electronic Codebook (ECB)}
+TBA
+\subsection{Cipher Block Chaining (CBC)}
+TBA
+\subsection{Counter (CTR)}
+TBA
 \newpage
-\section{Galois Counter Mode (GCM)}
+\section{Galois\;/\;Counter Mode (GCM)}
 \input{mode/gcm.tex}
 
 \newpage
@@ -623,55 +748,171 @@ typedef struct __ModeOfOperationContext__ {
 %  CHAPTER 4: RANDOM NUMBER GENERATOR (Placeholder)
 %-----------------------------------------------------------------------
 \section{Random Number Generator}
+TBA
 % Implementation details, entropy sources, usage examples
 
 %-----------------------------------------------------------------------
 %  CHAPTER 5: HASH FUNCTIONS (Placeholder)
 %-----------------------------------------------------------------------
 \section{Hash Functions}
+\subsection{SHA-2 Algorithms}
+TBA
+\subsection{SHA-3 Algorithms}
+TBA
+\subsection{Lightweight Secure Hash (LSH)}
+TBA
 % Implementation details, supported hashes, ASM notes
 
 %-----------------------------------------------------------------------
 %  CHAPTER 6: MESSAGE AUTHENTICATION CODES (Placeholder)
 %-----------------------------------------------------------------------
 \section{Message Authentication Codes}
+TBA
 % Content about HMAC, CMAC, usage examples, best practices
 
 %-----------------------------------------------------------------------
 %  CHAPTER 7: KEY DERIVATION FUNCTIONS (Placeholder)
 %-----------------------------------------------------------------------
 \section{Key Derivation Functions}
+TBA
 % PBKDF, HKDF, usage in password hashing or key expansions
 
 %-----------------------------------------------------------------------
 %  CHAPTER 8: KEY EXCHANGE (Placeholder)
 %-----------------------------------------------------------------------
-\section{Key Exchange}
+\section{Diffie-Hellman Key Exchange}
+TBA
 % ECDH, DH, usage details, integration
 
 %-----------------------------------------------------------------------
 %  CHAPTER 9: SIGNATURE ALGORITHMS (Placeholder)
 %-----------------------------------------------------------------------
 \section{Signature Algorithms}
+TBA
 % ECDSA, RSA, usage patterns, performance tips
 
-%-----------------------------------------------------------------------
-%  CHAPTER 3: BUILD AND INTEGRATION (Placeholder)
-%-----------------------------------------------------------------------
+%%-----------------------------------------------------------------------
+%%  CHAPTER 3: BUILD AND INTEGRATION (Placeholder)
+%%-----------------------------------------------------------------------
 \chapter{Build and Integration}
-% Makefile overview, linking instructions, library creation
 
-%-----------------------------------------------------------------------
-%  CHAPTER 4: TESTING (Placeholder)
-%-----------------------------------------------------------------------
-\chapter{Testing}
-% Unit tests, integration tests, reference vectors
+\section{Makefile Configuration and Overview}
+This section describes the build system for the CryptoModule demo, driven by a single GNU Makefile. It covers compiler settings, directory layout, source discovery, and all available targets.
+
+\subsection{Compiler, Flags, and Directories}
+\begin{lstlisting}[numbers=none]
+# Compiler and flags
+CC      := gcc
+CFLAGS  := -std=c99 -g -O2 -Wall -Wextra -I. -Iinclude -Isrc
+
+# Executable name
+TARGET  := cryptomodule-demo
+
+# Output directories
+OBJ_DIR := build
+BIN_DIR := bin
+\end{lstlisting}
+\begin{itemize}
+	\item \texttt{gcc} in C99 mode, with debug symbols (\texttt{-g}) and optimization (\texttt{-O2}).
+	\item Warnings enabled (\texttt{-Wall -Wextra}), include paths set for project headers.
+	\item Object files placed under \texttt{build/}, preserving the \texttt{src/} subdirectory structure; final binary in \texttt{bin/}.
+\end{itemize}
+
+\subsection{Automatic Source and Object Discovery}
+\begin{lstlisting}[numbers=none]
+# Find all .c files in src/ recursively
+SRCS := $(shell find src -name '*.c')
+
+# Map src/foo.c -> build/foo.o
+OBJS := $(patsubst src/%.c,$(OBJ_DIR)/%.o,$(SRCS))
+\end{lstlisting}
+
+\newpage
+\subsection{Usage Examples}
+\begin{lstlisting}[numbers=none]
+###############################################################################
+# 1) build : compile + link
+###############################################################################
+build: $(BIN_DIR)/$(TARGET)
+
+# Link step: gather all objects into a single executable
+$(BIN_DIR)/$(TARGET): $(OBJS)
+	@echo "[LINK] Linking objects to create $@"
+	@mkdir -p $(BIN_DIR)
+	$(CC) $(CFLAGS) $^ -o $@
+# Compile step: For each .c -> .o
+$(OBJ_DIR)/%.o: src/%.c
+	@echo "[CC] Compiling $< into $@"
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+###############################################################################
+# 2) run : run the resulting binary
+###############################################################################
+run: build
+	@echo "[RUN] Running $(BIN_DIR)/$(TARGET)"
+	@./$(BIN_DIR)/$(TARGET)
+
+###############################################################################
+# 3) clean : remove build artifacts
+###############################################################################
+clean:
+@echo "[CLEAN] Removing build artifacts..."
+	rm -rf $(OBJ_DIR) $(BIN_DIR)
+	@echo "[CLEAN] Removing *.req and *.rsp files in testvectors folder..."
+	find testvectors -type f \( -name '*.req' -o -name '*.rsp' \) -delete
+
+###############################################################################
+# 4) rebuild : clean + build
+###############################################################################
+rebuild: clean build
+
+###############################################################################
+# 5) valgrind : run the binary under Valgrind for memory checking
+###############################################################################
+valgrind: build
+	@echo "[VALGRIND] Running Valgrind..."
+	valgrind --leak-check=full ./$(BIN_DIR)/$(TARGET)
+\end{lstlisting}
+
+\begin{description}
+	\item[\texttt{make build}] Compile (\texttt{.c → .o}) and link (\texttt{.o → executable}).
+	\item[\texttt{make run}] Build if necessary, then execute \texttt{bin/cryptomodule-demo}.
+	\item[\texttt{make clean}] Remove \texttt{build/}, \texttt{bin/}, and any \texttt{*.req}/\texttt{*.rsp} in \texttt{testvectors/}.
+	\item[\texttt{make rebuild}] Alias for \texttt{clean} followed by \texttt{build}.
+	\item[\texttt{make valgrind}] Build, then run under Valgrind for memory-leak checks.
+\end{description}
+% Makefile overview, linking instructions, library creation
+%
+%%-----------------------------------------------------------------------
+%%  CHAPTER 4: TESTING (Placeholder)
+%%-----------------------------------------------------------------------
+%\chapter{Testing}
+%% Unit tests, integration tests, reference vectors
 
 %%-----------------------------------------------------------------------
 %%  CHAPTER 5: FAQ / TROUBLESHOOTING (Placeholder)
 %%-----------------------------------------------------------------------
 %\chapter{FAQ / Troubleshooting}
 %% Common errors, solutions, performance tuning
+
+\newpage
+\section{Example: Main Function for Block‐Cipher KATs}
+\begin{lstlisting}[caption={Invoke known-answer tests for AES block ciphers},label={lst:main-kat},captionpos=t]
+int main(void) {
+	KAT_TEST_BLOCKCIPHER(BLOCK_CIPHER_AES128);
+	KAT_TEST_BLOCKCIPHER(BLOCK_CIPHER_AES192);
+	KAT_TEST_BLOCKCIPHER(BLOCK_CIPHER_AES256);
+	return 0;
+}
+\end{lstlisting}
+\begin{lstlisting}[]
+@>$ make rebuild
+@>$ make run
+\end{lstlisting}
+
+\begin{figure}[h!]\centering
+\includegraphics[scale=.65]{images/make_run}
+\end{figure}
 
 \newpage
 \bibliography{bibliography}
@@ -682,5 +923,6 @@ typedef struct __ModeOfOperationContext__ {
 %  CHAPTER 13: APPENDICES (Placeholder)
 %-----------------------------------------------------------------------
 \chapter*{Appendices}
+TBA
 % Glossary, references, external documentation
 \end{document}

@@ -1,10 +1,13 @@
-%\begin{center}
-%	\includegraphics[scale=1]{tikz/GCM_encryption}
-%\end{center}
 
-\begin{figure}[h!]\centering
-\includegraphics[scale=1.25]{tikz/gcm_mode}
-\end{figure}
+\paragraph{References:} 
+\cite{McGrewViega2004gcm}
+\begin{center}
+\includegraphics[scale=.955]{tikz/GCM_encryption}
+\end{center}
+
+%\begin{figure}[h!]\centering
+%\includegraphics[scale=1.25]{tikz/gcm_mode}
+%\end{figure}
 
 \subsection{Multiplication in $\GF(2^{128})$}
 \begin{definition}
@@ -17,7 +20,7 @@
 	\[
 	\mathrm{GF}(2^{128}) \;=\; \mathbb F_2[x] \,\big/\,\bigl(f(x)\bigr)
 	\]
-	is the degree-\(128\) extension field.
+	is the degree-\(128\) binary extension field.
 \end{definition}
 \begin{remark}
 Every element \(\alpha\in\mathrm{GF}(2^{128})\) can be written uniquely as \[
@@ -27,52 +30,105 @@ Every element \(\alpha\in\mathrm{GF}(2^{128})\) can be written uniquely as \[
 \end{remark}
 
 \paragraph{Polynomial Representation and Reduction}
-Multiplication in \(\mathbb F_2[x]\) is carry-less:
+Consider \[
+\left(\sum_{i=0}^{127}a_i x^i\right)\,\left(\sum_{j=0}^{127}b_j x^j\right)
+\;=\;\sum_{i=0}^{127}\sum_{j=0}^{127}(a_i b_j)\,x^{i+j},\quad\text{where each $a_i b_j\in\{0,1\}$}.
+\] The raw product has degree at most 254.  To obtain an element of 
+\(\GF(2^{128})\), we reduce it modulo $
+f(x)=x^{128}+x^7+x^2+x+1$.
+Concretely, whenever a term \(x^k\) with \(k\ge128\) appears, one replaces 
 \[
-\left(\sum_i a_i x^i\right)\cdot\left(\sum_j b_j x^j\right)
-=\sum_{i,j}\left(a_i b_j\right)\,x^{i+j}\,,
+x^{128}\;\mapsto\;x^7+x^2+x+1
 \]
-with all additions mod 2.  To get the product in \(\mathrm{GF}(2^{128})\), we then reduce
-the degree-\(\le 254\) result modulo \(f(x)\).
+and iterates until the remainder has degree \(\le127\).
 
 \paragraph{Bit-Level Algorithm}
-We implement multiplication by a simple “shift-and-add” method with reduction on each
-shift, often called \(\mathtt{xtime}\).
+We implement multiplication by a simple ``shift-and-add'' method with reduction on each
+shift, often called \(\mathtt{gf128\_xtime}\). For \(v\in\mathrm{GF}(2^{128})\) represented as a 128-bit, define a function \[
+\texttt{gf128\_xtime}:\GF(2^{128})\to\GF(2^{128}),\quad v\mapsto xv.
+%\fullfunction{\texttt{gf128\_xtime}}{\GF(2^{128})}{\GF(2^{128})}{v}{x\cdot v}.
+\] for each $v\in\GF(2^{128})$. Since \begin{align*}
+\texttt{gf128\_xtime}(v)=x\cdot v
+%&=x\cdot(a_{127}a_{126}\cdots a_{120}\parallel\cdots\parallel a_{14}a_{13}\cdots a_{8}\parallel a_7a_6\cdots a_0) \\
+%&=x\cdot (a_{127}x^{127}+a_{126}x^{126}+\cdots a_2x^2+a_1x+a_0) \\
+%&=a_{127}{\color{red}x^{128}}+a_{126}x^{127}+\cdots a_2x^3+a_1x^2+a_0x \\
+%&=a_{127}{\color{red}(1+x+x^2+x^7)}+a_{126}x^{127}+\cdots a_2x^3+a_1x^2+a_0x \\
+%&=\begin{cases*}
+%	a_{126}\cdots a_{119}\parallel\cdots\parallel a_{14}\cdots a_{7}\parallel (a_6\cdots a_00\oplus\;\texttt{00000000})\parallel   &if $a_{127}=0$\\
+%	a_{126}\cdots a_{119}\parallel\cdots\parallel a_{14}\cdots a_{7}\parallel (a_6\cdots a_00\oplus\;\texttt{10000111})\parallel   &if $a_{127}=1$
+%\end{cases*},
+&=x\cdot(a_{0}a_{1}\cdots a_{7}\parallel a_{8}a_{9}\cdots a_{15}\parallel\cdots\parallel a_{120}a_{121}\cdots a_{127}) \\
+&=x\cdot (a_0+a_1x+\cdots +a_{126}x^{126} +a_{127}x^{127}) \\
+&=a_0x+a_1x^2+\cdots+a_{126}x^{127}+a_{127}{\color{red}x^{128}}\\
+&=a_0x+a_1x^2+\cdots+a_{126}x^{127}+a_{127}{\color{red}(x^7+x^2+x+1)}\\
+&=\begin{cases*}
+(0a_1\cdots a_6\oplus\;\texttt{00000000})\parallel a_{7}\cdots a_{14}\parallel\cdots\parallel a_{119}a_{120}\cdots a_{126}  &if $a_{127}=0$\\
+(0a_1\cdots a_6\oplus\;\texttt{11100001})\parallel a_{7}\cdots a_{14}\parallel\cdots\parallel a_{119}a_{120}\cdots a_{126}  &if $a_{127}=1$
+\end{cases*},
+\end{align*} we have
+\[
+\mathtt{gf128\_xtime}(v) = 
+\begin{cases}
+	v \gg 1, &\text{if the MSB of }v\text{ is }0,\\[6pt]
+	(v \gg 1)\oplus\texttt{0xE1}, &\text{if the MSB of }v\text{ is }1,
+\end{cases}
+\]
+where \texttt{0xE1} is the bit-vector corresponding to the reduction polynomial
+\(x^7+x^2+x+1\).
+\vfill
+\begin{lstlisting}[style=cstyle]
+/* v <- vx mod (x^128 + x^7 + x^2 + x + 1) */
+void gf128_xtime(uint8_t v[16]) {
+	uint8_t t = v[15] & 1;				// p[15] = p120...p127; extract p127
+	// Shift the 128-bit value right by 1:
+	for (int i = 15; i > 0; --i)		
+		v[i] = (v[i] >> 1) | ((v[i-1] & 1) << 7);
+	p[0] >>= 1;							// p0p1...p7 -> 0p0...p6
+	if (t) v[0] ^= 0xE1;                // // 0p0...p6 ^ 11100001
+}
+\end{lstlisting}
 
-\begin{definition}[\,\(\mathtt{xtime}\) map\,]
-	For \(v\in\mathrm{GF}(2^{128})\) represented as a 128-bit word, define
-	\[
-	\mathtt{xtime}(v) = 
-	\begin{cases}
-		v \ll 1, &\text{if the MSB of }v\text{ is }0,\\[6pt]
-		(v \ll 1)\oplus R, &\text{if the MSB of }v\text{ is }1,
-	\end{cases}
-	\]
-	where \(R\) is the bit-vector corresponding to the reduction polynomial
-	\(x^7+x^2+x+1\).
-\end{definition}
+%* Inputs & outputs are 128-bit values in big-endian byte order (p[0]...p[15]).
+\begin{lstlisting}[style=cstyle]
+/*
+* Compute p(x) <- p(x)q(x) over GF(2^128) using "shift-and-add" multiplication.
+*/
+void gf128_mul(u8 p[16], u8 q[16]) {
+	u8 buffer[16] = { 0x00, };      // accumulator for the product
+	u8 bit_mask;              // mask for each bit of q
+	for (int i = 0; i < 16; ++i) { // Loop over each byte of q (Q[0] = q120...q127)
+		for (int j = 0; j < 8; ++j) { // Process bits q(128-8i-1) down to q(128-8i-8)
+			bit_mask = q[i] & (1 << (7 - j));
+			if (bit_mask) {
+				// If the current bit of q is 1, XOR the current p(x) into buffer
+				for (int k = 0; k < 16; ++k) { buffer[k] ^= p[k]; }
+			}
+			gf128_xtime(p); // Multiply p(x) by x (i.e. shift-and-reduce) for next bit
+		}
+	}
+	// Write the accumulated product back into p[0...15]
+	for (int i = 0; i < 16; ++i) { p[i] = buffer[i]; }
+}
+\end{lstlisting}
+\newpage
 
-\paragraph{Pseudocode}
-\ \\ \begin{algorithm}[H]
-	\caption{Multiply two field elements \(a,b\in\mathrm{GF}(2^{128})\)}
-	\label{alg:mul2}
-	\begin{algorithmic}[1]
-		\REQUIRE \(a,b\in\{0,1\}^{128}\) as 128-bit words  
-		\ENSURE \(c = a\cdot b \bmod f(x)\)
-		\STATE \(c \leftarrow 0\)  
-		\STATE \(v \leftarrow a\)  
-		\FOR{\(i=0\) to \(127\)}  
-		\IF{bit \(i\) of \(b\) is 1}  
-		\STATE \(c \leftarrow c \oplus v\)  
-		\ENDIF  
-		\STATE \(v \leftarrow \mathtt{xtime}(v)\)  
-		\ENDFOR  
-		\RETURN \(c\)
-	\end{algorithmic}
-\end{algorithm}
-
-
-
-\paragraph{References:} 
-\cite{NIST80038d},\;
-\cite{McGrewViega2004gcm}
+\subsection{Efficient Multiplication in $\GF(2^{128})$}
+TBA
+%\paragraph{Pseudocode}
+%\ \\ \begin{algorithm}[H]
+%	\caption{Multiply two field elements \(a,b\in\mathrm{GF}(2^{128})\)}
+%	\label{alg:mul2}
+%	\begin{algorithmic}[1]
+%		\REQUIRE \(a,b\in\{0,1\}^{128}\) as 128-bit words  
+%		\ENSURE \(c = a\cdot b \bmod f(x)=x^{128}+x^7+x^2+x+1\)
+%		\STATE \(c \leftarrow 0\)  
+%		\STATE \(v \leftarrow a\)  
+%		\FOR{\(i=0\) to \(127\)}  
+%		\IF{bit \(i\) of \(b\) is 1}  
+%		\STATE \(c \leftarrow c \oplus v\)  
+%		\ENDIF  
+%		\STATE \(v \leftarrow \mathtt{xtime}(v)\)  
+%		\ENDFOR  
+%		\RETURN \(c\)
+%	\end{algorithmic}
+%\end{algorithm}

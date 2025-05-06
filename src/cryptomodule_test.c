@@ -2,7 +2,7 @@
 
 #include "../include/cryptomodule_test.h"
 #include "../include/cryptomodule_utils.h"
-#include "../include/block_cipher/block_cipher_api.h"
+#include "../include/block_cipher/api_block_cipher.h"
 #include "../include/block_cipher/block_cipher_aes.h"
 #include "../include/ansi_code.h"
 
@@ -396,7 +396,7 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
     int passed_tests = 0;
 
     // Spinner characters for visualizing processing progress
-    const char *spinner[] = {"|", "/", "-", "\\", "|", "/", "-", "\\"};
+    const char *spinner[] = {"|", "/", "-", "\\"};
     int spinner_index = 0;
 
 
@@ -438,15 +438,16 @@ void KAT_TEST_BLOCKCIPHER(BlockCipherType type) {
             i++;
         }
 
-        // usleep(5000);
+        usleep(500);
         // usleep(10000); // Sleep for 10 milliseconds
+        // usleep(50000); // Sleep for 10 milliseconds
 
         if (strncmp(line_fax, "KEY =", 5) == 0) {
             passed_tests++;
         }
         // printf("\r\x1b[35m[%s] Verifying test vector... (%3d/%3d)\r", spinner[spinner_index], passed_tests, total_tests);
         progress_bar(passed_tests, total_tests);
-        spinner_index = (spinner_index + 1) % 8;
+        spinner_index = (spinner_index + 1) % 4;
         fflush(stdout);
     }
 

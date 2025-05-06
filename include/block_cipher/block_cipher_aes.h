@@ -2,14 +2,19 @@
 #ifndef BLOCK_CIPHER_AES_H
 #define BLOCK_CIPHER_AES_H
 
-#include "block_cipher_api.h"
+#include "api_block_cipher.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// /* Get the AES block cipher vtable. */
+/* Get the AES block cipher vtable. */
 const BlockCipherApi* get_aes_api(void);
+
+void aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk);
+void aes_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk);
+void aes_encrypt(const u8 *in, u8 *out, const u32 *rk, int r);
+void aes_decrypt(const u8 *in, u8 *out, const u32 *rk, int r);
 
 #define GETU32(pt) (((u32)(pt)[0] << 24) ^ ((u32)(pt)[1] << 16) ^ ((u32)(pt)[2] <<  8) ^ ((u32)(pt)[3]))
 #define PUTU32(ct, st) { (ct)[0] = (u8)((st) >> 24); (ct)[1] = (u8)((st) >> 16); (ct)[2] = (u8)((st) >>  8); (ct)[3] = (u8)(st); }

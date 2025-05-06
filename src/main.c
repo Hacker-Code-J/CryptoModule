@@ -1,5 +1,5 @@
 /* File: src/main.c */
-#include "../include/cryptomodule_api.h"
+#include "../include/api_cryptomodule.h"
 
 /* Enable core dumps and set signal handlers for debugging */
 #include <signal.h>
@@ -7,8 +7,8 @@
 #include <execinfo.h>
 #include <unistd.h>
 
-#define BLOCK_CIPHER_TEST_FLAG 1
-#define MODE_OF_OPERATION_TEST_FLAG 1
+// #define BLOCK_CIPHER_TEST_FLAG 1
+// #define MODE_OF_OPERATION_TEST_FLAG 1
 // #define PADDING_TEST_FLAG 1
 
 int main(void) {

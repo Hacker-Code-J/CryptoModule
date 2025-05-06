@@ -1,5 +1,5 @@
-/* File: include/block_cipher/block_cipher.h */
-#include "../cryptomodule_api.h"
+/* File: include/block_cipher/api_block_cipher.h */
+#include "../api_cryptomodule.h"
 
 /**
  * @file block_cipher_api.h
@@ -114,6 +114,7 @@ typedef enum {
     BLOCK_CIPHER_ERR_INVALID_KEY = 0x01,    // Invalid key error
     BLOCK_CIPHER_ERR_INVALID_BLOCK = 0x02,  // Invalid block error
     BLOCK_CIPHER_ERR_UNSUPPORTED_DIRECTION = 0x03, // Unsupported mode error
+    BLOCK_CIPHER_INVALID_PARAMETER = 0xFE, // Invalid parameter error
     BLOCK_CIPHER_ERR_UNKNOWN = 0xFF         // Unknown error
 } block_cipher_status_t;
 
@@ -216,7 +217,7 @@ typedef union __CipherInternal__ {
  */
 struct __BlockCipherContext__ {
     const BlockCipherApi *cipher_api;  
-    CipherInternal cipher_internal_data; /* Generic internal state for any cipher */
+    CipherInternal cipher_state; /* Generic internal state for any cipher */
 };
 
 static inline void clear_block_cipher_ctx(BlockCipherContext *cipher_ctx) {

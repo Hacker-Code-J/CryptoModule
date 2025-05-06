@@ -14,11 +14,6 @@ static block_cipher_status_t aes_init(BlockCipherContext *ctx, const u8 *key, si
 static block_cipher_status_t aes_process(BlockCipherContext *ctx, const u8 *in, u8 *out, BlockCipherDirection dir);
 static void aes_dispose(BlockCipherContext *ctx);
 
-void aes_set_encrypt_key(const u8 *key, size_t bytes, u32 *rk);
-void aes_set_decrypt_key(const u8 *key, size_t bytes, u32 *rk);
-void aes_encrypt(const u8 *in, u8 *out, const u32 *rk, int r);
-void aes_decrypt(const u8 *in, u8 *out, const u32 *rk, int r);
-
 /**
  * @brief The AES block cipher API.
  * @details This structure contains function pointers to the AES initialization, unified encryption/decryption function,
@@ -34,8 +29,6 @@ static const BlockCipherApi AES_API = {
 /**
  * @brief Get the AES block cipher API.
  * @return Pointer to the AES block cipher API structure.
- * @details This function returns a pointer to the AES block cipher API structure,
- *          which contains function pointers for AES operations.
  */
 const BlockCipherApi *get_aes_api(void) { return &AES_API; }
 
@@ -215,24 +208,24 @@ block_cipher_status_t aes_init(BlockCipherContext *cipher_ctx, const u8 *key, si
         return BLOCK_CIPHER_ERR_INVALID_BLOCK;
     }
 
-    cipher_ctx->cipher_internal_data.aes_internal.block_size = block_len;
-    cipher_ctx->cipher_internal_data.aes_internal.key_len = key_len;
+    cipher_ctx->cipher_state.aes_internal.block_size = block_len;
+    cipher_ctx->cipher_state.aes_internal.key_len = key_len;
     switch(key_len) {
-        case AES128_KEY_SIZE: cipher_ctx->cipher_internal_data.aes_internal.nr = AES128_NUM_ROUNDS; break;
-        case AES192_KEY_SIZE: cipher_ctx->cipher_internal_data.aes_internal.nr = AES192_NUM_ROUNDS; break;
-        case AES256_KEY_SIZE: cipher_ctx->cipher_internal_data.aes_internal.nr = AES256_NUM_ROUNDS; break;
+        case AES128_KEY_SIZE: cipher_ctx->cipher_state.aes_internal.nr = AES128_NUM_ROUNDS; break;
+        case AES192_KEY_SIZE: cipher_ctx->cipher_state.aes_internal.nr = AES192_NUM_ROUNDS; break;
+        case AES256_KEY_SIZE: cipher_ctx->cipher_state.aes_internal.nr = AES256_NUM_ROUNDS; break;
     }
-    memset(cipher_ctx->cipher_internal_data.aes_internal.round_keys, 0,
-           sizeof(cipher_ctx->cipher_internal_data.aes_internal.round_keys));
+    memset(cipher_ctx->cipher_state.aes_internal.round_keys, 0,
+           sizeof(cipher_ctx->cipher_state.aes_internal.round_keys));
 
     /* Key expansion */
     // block_cipher_status_t status = BLOCK_CIPHER_OK_INITIALIZATION;
     switch (dir) {
         case BLOCK_CIPHER_ENCRYPTION:
-            aes_set_encrypt_key(key, key_len, cipher_ctx->cipher_internal_data.aes_internal.round_keys);
+            aes_set_encrypt_key(key, key_len, cipher_ctx->cipher_state.aes_internal.round_keys);
             break;
         case BLOCK_CIPHER_DECRYPTION:
-            aes_set_decrypt_key(key, key_len, cipher_ctx->cipher_internal_data.aes_internal.round_keys);
+            aes_set_decrypt_key(key, key_len, cipher_ctx->cipher_state.aes_internal.round_keys);
             break;
         default:
             fprintf(stderr, "Invalid direction: %s\n", block_cipher_direction_to_string(dir));
@@ -516,9 +509,9 @@ block_cipher_status_t aes_process(BlockCipherContext *cipher_ctx, const u8 *in, 
     // printf("%s\n", block_cipher_direction_to_string(dir));
 
     if (dir == BLOCK_CIPHER_ENCRYPTION) {
-        aes_encrypt(in, out, cipher_ctx->cipher_internal_data.aes_internal.round_keys, cipher_ctx->cipher_internal_data.aes_internal.nr);
+        aes_encrypt(in, out, cipher_ctx->cipher_state.aes_internal.round_keys, cipher_ctx->cipher_state.aes_internal.nr);
     } else if (dir == BLOCK_CIPHER_DECRYPTION) {
-        aes_decrypt(in, out, cipher_ctx->cipher_internal_data.aes_internal.round_keys, cipher_ctx->cipher_internal_data.aes_internal.nr);
+        aes_decrypt(in, out, cipher_ctx->cipher_state.aes_internal.round_keys, cipher_ctx->cipher_state.aes_internal.nr);
     } else {
         fprintf(stderr, "Invalid block cipher direction\n");
         return BLOCK_CIPHER_ERR_UNSUPPORTED_DIRECTION;
@@ -530,6 +523,6 @@ block_cipher_status_t aes_process(BlockCipherContext *cipher_ctx, const u8 *in, 
 void aes_dispose(BlockCipherContext *cipher_ctx) {
     if (!cipher_ctx) return;
     /* Clear out the AES portion of the union. */
-    memset(&cipher_ctx->cipher_internal_data.aes_internal, 0,
-           sizeof(cipher_ctx->cipher_internal_data.aes_internal));
+    memset(&cipher_ctx->cipher_state.aes_internal, 0,
+           sizeof(cipher_ctx->cipher_state.aes_internal));
 }

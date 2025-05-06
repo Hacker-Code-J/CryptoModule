@@ -59,17 +59,17 @@ typedef struct {
 #include "cryptomodule_test.h"
 
 /* Block ciphers */
-#include "block_cipher/block_cipher_api.h"
-// #include "block_cipher/block_cipher_aes.h"
-// #include "block_cipher/block_cipher_aria.h"
-// #include "block_cipher/block_cipher_lea.h"
+#include "block_cipher/api_block_cipher.h"
+#include "block_cipher/block_cipher_aes.h"
+#include "block_cipher/block_cipher_aria.h"
+#include "block_cipher/block_cipher_lea.h"
 
 /* Modes of operation */
-#include "mode/mode_api.h"
-// #include "mode/mode_ecb.h"
-// #include "mode/mode_cbc.h"
-// #include "mode/mode_ctr.h"
-// #include "mode/mode_gcm.h"
+#include "mode/api_mode.h"
+#include "mode/mode_ecb.h"
+#include "mode/mode_cbc.h"
+#include "mode/mode_ctr.h"
+#include "mode/mode_gcm.h"
 
 /* RNG */
 // #include "ctr_drbg.h"

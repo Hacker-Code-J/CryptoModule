@@ -1,7 +1,7 @@
 /* File: include/kat_verifier.h */
 
-#include "cryptomodule_api.h"
-#include "block_cipher/block_cipher_api.h"
+#include "api_cryptomodule.h"
+#include "block_cipher/api_block_cipher.h"
 #include "cryptomodule_utils.h"
 
 #ifndef KAT_VERIFIER_H
@@ -64,56 +64,6 @@ size_t byte_length(const char *string);
  *          The function assumes that the string is well-formed and contains valid hexadecimal characters.
  */
 size_t word_length(const char *string);
-
-/**
- * @brief BlockCipherTestData structure.
- * @details This structure holds test data for block ciphers, including key, IV, plaintext, and ciphertext.
- *          It is used for KAT (Known Answer Test) verification of block cipher implementations.
- */
-typedef struct __BlockCipherTestData__ {
-    // BlockCipherType type; /* Type of the cipher (AES, ARIA, LEA) */
-    // BlockCipherDirection dir; /* Direction of the cipher (encryption/decryption) */
-    u32 *key;         /* Key for the cipher */
-    u32 *iv;          /* Initialization vector */
-    u32 *pt;          /* Plaintext input */
-    u32 *ct;          /* Ciphertext output */
-    size_t key_len;  /* Length of the key */
-    size_t iv_len;   /* Length of the IV */
-    size_t pt_len;   /* Length of the plaintext */
-    size_t ct_len;   /* Length of the ciphertext */
-} BlockCipherTestData;
-
-/**
- * @brief Creates a BlockCipherTestData structure.
- * @param key_len Length of the key.
- * @param iv_len Length of the IV.
- * @param pt_len Length of the plaintext.
- * @param ct_len Length of the ciphertext.
- * @return Pointer to the created BlockCipherTestData structure.
- * @details This function allocates memory for the BlockCipherTestData structure and initializes its members.
- */
-BlockCipherTestData *create_block_cipher_test_data(size_t key_len, size_t iv_len, size_t pt_len, size_t ct_len);
-
-/**
- * @brief Clears the contents of a BlockCipherTestData structure.
- * @param data Pointer to the BlockCipherTestData structure to clear.
- * @details This function sets all members of the BlockCipherTestData structure to zero.
- */
-void clear_block_cipher_test_data(BlockCipherTestData *data);
-
-/**
- * @brief Deletes a BlockCipherTestData structure.
- * @param data Pointer to the BlockCipherTestData structure to delete.
- * @details This function frees the memory allocated for the BlockCipherTestData structure and its members.
- */
-void delete_block_cipher_test_data(BlockCipherTestData *data);
-
-/**
- * @brief Prints the contents of a BlockCipherTestData structure.
- * @param data Pointer to the BlockCipherTestData structure to print.
- * @details This function prints the key, IV, plaintext, and ciphertext values in a human-readable format.
- */
-void print_block_cipher_test_data(const BlockCipherTestData *data);
 
 /**
  * @brief Writes test data to a file.

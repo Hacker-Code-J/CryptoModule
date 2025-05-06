@@ -1,6 +1,6 @@
 /* File: src/mode/padding.c */
 
-#include "../../include/mode/mode_api.h"
+#include "../../include/mode/api_mode.h"
 
 /**
  * PKCS#7 padding:

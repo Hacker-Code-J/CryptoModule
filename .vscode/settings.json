@@ -91,7 +91,14 @@
     "mode_api.h": "c",
     "signal.h": "c",
     "block_cipher_aria.h": "c",
-    "execinfo.h": "c"
+    "execinfo.h": "c",
+    "api_block_cipher.h": "c",
+    "api_mode.h": "c",
+    "block_cipher_lea.h": "c",
+    "api_cryptomodule.h": "c",
+    "mode_gcm.h": "c",
+    "mode_ecb.h": "c",
+    "random": "c"
   },
   "files.exclude": {
     "**/*.vo": true,

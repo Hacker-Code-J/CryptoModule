@@ -15,15 +15,14 @@ A modular cryptography library providing block ciphers, modes of operation, RNG,
 ```
 CryptoModule/
 ├── include/
-│   └── cryptomodule/
-│       ├── block/               # Headers for block ciphers
-│       ├── mode/                # Headers for modes of operation
-│       ├── rng/                 # Headers for RNG
-│       ├── hash/                # Headers for hash functions
-│       ├── mac/                 # Headers for MAC (HMAC, etc.)
-│       ├── kdf/                 # Headers for KDF (PBKDF, etc.)
-│       ├── keysetup/            # Headers for key exchange / ECDH
-│       └── sign/                # Headers for signature algorithms
+│   ├── block/               # Headers for block ciphers
+│   ├── mode/                # Headers for modes of operation
+│   ├── rng/                 # Headers for RNG
+│   ├── hash/                # Headers for hash functions
+│   ├── mac/                 # Headers for MAC (HMAC, etc.)
+│   ├── kdf/                 # Headers for KDF (PBKDF, etc.)
+│   ├── keysetup/            # Headers for key exchange / ECDH
+│   └── sign/                # Headers for signature algorithms
 ├── src/
 │   ├── block/                   # Source for block ciphers
 │   ├── mode/                    # Source for modes of operation
@@ -41,13 +40,13 @@ CryptoModule/
 └── README.md
 ```
 
-### `include/cryptomodule/`
+### `include/`
 All public-facing headers reside here, organized by cryptographic algorithm families. This helps users `#include` the relevant header files for each algorithm, e.g.:
 
 ```c
-#include <cryptomodule/block/aes.h>
-#include <cryptomodule/mode/gcm.h>
-#include <cryptomodule/rng/ctr_drbg.h>
+#include <block/aes.h>
+#include <mode/gcm.h>
+#include <rng/ctr_drbg.h>
 ...
 ```
 
@@ -119,7 +118,7 @@ gcc -I./include -L. -lcryptomodule your_app.c -o your_app
 
 ## Adding New Algorithms or Features
 
-1. Create a header in the appropriate subdirectory under `include/cryptomodule/`.
+1. Create a header in the appropriate subdirectory under `include/`.
 2. Add the implementation `.c` file in the matching subdirectory under `src/`.
 3. Update or create tests in `tests/` if needed.
 4. Update the Makefile if you add new subdirectories, or just rely on `wildcard src/<name>/*.c` patterns.

@@ -1,6 +1,6 @@
 /* File: include/utility.h */
 
-#include "cryptomodule_api.h"
+#include "api_cryptomodule.h"
 // #include "block_cipher/block_cipher.h"
 
 #ifndef UTILITY_H
