@@ -1,0 +1,120 @@
+\usepackage{kotex}
+\usepackage{amssymb, amsmath, amsthm, commath}
+\usepackage{mathtools}
+
+%-------------------------
+% Package Imports
+%-------------------------
+\usepackage[margin=1in]{geometry}            % Page margins
+\usepackage{graphicx}                        % Images and logos
+\usepackage{titlesec}                        % Custom section formatting
+\usepackage{fancyhdr}                        % Headers and footers
+\usepackage{setspace}                        % Line spacing
+\usepackage{hyperref}                        % Hyperlinks
+\usepackage{enumerate}
+%\usepackage{lmodern}                         % Enhanced fonts
+\usepackage{xcolor}                          % Color definitions
+\usepackage{array}                           % Table formatting
+\usepackage{listings}                        % For code listings
+
+\usepackage{tikz}
+\usetikzlibrary{trees}
+
+\usepackage{adjustbox}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+
+% Fonts
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{newpxtext,newpxmath}
+\usepackage{sectsty}
+
+%-------------------------
+% Custom Fonts and Colors
+%-------------------------
+%\allsectionsfont{\sffamily\bfseries}         % Sans-serif, bold section titles
+
+% Define a rule command for the cover page
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
+% Pseudo-code
+\usepackage[linesnumbered,ruled]{algorithm2e}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+%\usepackage{setspace}
+\SetKwComment{Comment}{/* }{ */}
+\SetKwProg{Fn}{Function}{:}{end}
+\SetKwProg{Procedure}{Procedure}{:}{end}
+\SetKwProg{Alg}{Algorithm}{:}{end}
+\SetKw{End}{end}
+\SetKw{DownTo}{downto}
+
+% Define a new environment for algorithms without line numbers
+\newenvironment{algorithm2}[1][]{
+	% Save the current state of the algorithm counter
+	\newcounter{tempCounter}
+	\setcounter{tempCounter}{\value{algocf}}
+	% redefine the algorithm numbering (remove prefix)
+	\renewcommand{\thealgocf}{}
+	\begin{algorithm}
+	}{
+	\end{algorithm}
+	% Restore the algorithm counter state
+	\setcounter{algocf}{\value{tempCounter}}
+}
+
+%\usepackage[linesnumbered,ruled]{algorithm2e}
+%\usepackage{algpseudocode}
+%\usepackage{setspace}
+%\SetKwComment{Comment}{/* }{ */}
+%\SetKwProg{Fn}{Function}{:}{end}
+%\SetKw{End}{end}
+%\SetKw{DownTo}{downto}
+%
+%% Define a new environment for algorithms without line numbers
+%\newenvironment{algorithm2}[1][]{
+%	% Save the current state of the algorithm counter
+%	\newcounter{tempCounter}
+%	\setcounter{tempCounter}{\value{algocf}}
+%	% redefine the algorithm numbering (remove prefix)
+%	\renewcommand{\thealgocf}{}
+%	\begin{algorithm}
+%	}{
+%	\end{algorithm}
+%	% Restore the algorithm counter state
+%	\setcounter{algocf}{\value{tempCounter}}
+%}
+
+%-------------------------
+% Header & Footer Settings
+%-------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{NCC-SIGN-T}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+
+%-------------------------
+% Title Page Setup
+%-------------------------
+\usepackage{background}
+\backgroundsetup{
+	scale=1,  % Scale the image to fit the page
+	color=black,  % Keep the image color as is
+	opacity=.1,  % Fully opaque background
+	angle=0,  % No rotation
+	%	position=current page.south,  % Align to bottom of the page
+	vshift=1cm,  % Adjust vertical alignment if needed
+	%	hshift=0cm,  % Adjust horizontal alignment if needed
+	contents={}
+}
+\newcommand{\setPageBackground}{
+	\backgroundsetup{
+		contents={\includegraphics[scale=4]{images/school-logo}
+			%		contents={\includegraphics[width=\paperwidth,height=\paperheight]{images/school-logo}
+			} % Replace with your image
+		}
+	}

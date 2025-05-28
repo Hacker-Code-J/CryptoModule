@@ -1,0 +1,109 @@
+%-------------------------
+% Listing Settings
+%-------------------------
+\renewcommand{\lstlistingname}{Code}
+\lstset{
+	basicstyle=\footnotesize\ttfamily,
+	breaklines=true,
+	frame=single,
+	columns=fullflexible,
+	captionpos=b,
+	postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+	numbers=left
+}
+% Define a custom style for C code
+\lstdefinestyle{cstyle}{
+	language=C,
+	morekeywords={
+		int8_t, int32_t, int64_t, i8, i32, i64,
+		uint8_t, uint32_t, uint64_t, u8, u32, u64,
+		asm, __asm__, __attribute__, auto, break, case, char, const,
+		continue, default, do, double, else, enum, extern, float,
+		for, goto, if, inline, int, long, register, restrict, return,
+		short, signed, sizeof, static, struct, switch, typedef, union,
+		unsigned, void, volatile, while, _Bool, _Complex, _Imaginary, size_t,
+		uint8_t, uint16_t, uint32_t, uint64_t,
+		AES, AES_KEY, AES_set_encrypt_key, AES_set_decrypt_key, AES_encrypt, AES_decrypt,
+		DES, DES_KEY, DES_key_schedule, DES_set_key, DES_encrypt, DES_decrypt,
+		RSA, RSA_generate_key, RSA_generate_key_ex, RSA_public_encrypt, RSA_private_decrypt, RSA_free,
+		MD5, MD5_Init, MD5_Update, MD5_Final, MD5_CTX,
+		SHA1, SHA1_Init, SHA1_Update, SHA1_Final, SHA_CTX,
+		SHA256, SHA256_Init, SHA256_Update, SHA256_Final, SHA256_CTX,
+		SHA512, SHA512_Init, SHA512_Update, SHA512_Final, SHA512_CTX,
+		HMAC, HMAC_Init, HMAC_Init_ex, HMAC_Update, HMAC_Final, HMAC_CTX,
+		EVP, EVP_CIPHER, EVP_CIPHER_CTX, EVP_EncryptInit, EVP_EncryptUpdate, EVP_EncryptFinal,
+		EVP_DecryptInit, EVP_DecryptUpdate, EVP_DecryptFinal,
+		BLOWFISH, CAST, CAST128, RC4, RC2, CHACHA20, POLY1305,
+		RAND_bytes, RAND_seed,
+		CRYPTO_num_locks, CRYPTO_set_locking_callback, CRYPTO_set_id_callback,
+		BN, BIGNUM, BN_new, BN_free, BN_add, BN_sub, BN_mul, BN_div, BN_mod,
+		PKCS1, PKCS7, PKCS12, PKCS12_create
+	},
+	backgroundcolor=\color{white},   % background color
+	basicstyle=\footnotesize\ttfamily, % font size and typewriter font
+	keywordstyle=\color{blue},         % keywords in blue
+	commentstyle=\color{green!50!black}, % comments in dark green
+	stringstyle=\color{orange},         % strings in orange
+	numbers=left,                       % line numbers on the left
+	numberstyle=\tiny\color{gray},       % line number style
+	stepnumber=1,                       % line numbers every 1 line
+	numbersep=10pt,                     % space between line numbers and code
+	showstringspaces=false,             % do not emphasize spaces in strings
+	breaklines=true,                    % automatic line breaking
+	breakatwhitespace=true,             % break lines only at whitespace
+	tabsize=4,                          % set tab width
+	captionpos=b,                       % caption position at the bottom
+	postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+	frame=single,                        % frame the code block with a single line
+}
+\newcommand{\cinline}[1]{%
+	\lstinline[style=cstyle, basicstyle=\normalsize\ttfamily]|#1|%
+}
+\lstdefinelanguage{CMake}{
+	morekeywords={
+		if, endif, elseif, else, foreach, endforeach, set, add_subdirectory, project,
+		include, message, install, configure_file, option, find_package
+	},
+	sensitive=true,
+	morecomment=[l]{\#},
+	morestring=[b]",
+}
+\lstdefinestyle{cmake}{
+	language=CMake,
+	basicstyle=\ttfamily\small,
+	keywordstyle=\color{blue}\bfseries,
+	commentstyle=\color{gray}\itshape,
+	stringstyle=\color{red},
+	numbers=left,
+	numberstyle=\tiny,
+	stepnumber=1,
+	numbersep=5pt,
+	frame=single,
+	breaklines=true,
+	breakatwhitespace=true,
+	postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+	tabsize=2
+}
+
+\definecolor{pykeyword}{RGB}{0,0,180}
+\definecolor{pycomment}{RGB}{0,128,0}
+\definecolor{pystring}{RGB}{163,21,21}
+
+\lstdefinestyle{py}{
+	language=Python,
+	basicstyle=\ttfamily\small,
+	keywordstyle=\bfseries\color{pykeyword},
+	commentstyle=\itshape\color{pycomment},
+	stringstyle=\color{pystring},
+	showstringspaces=false,
+	numbers=left,
+	numberstyle=\tiny\color{gray},
+	stepnumber=1,
+	numbersep=8pt,
+	frame=single,
+	breaklines=true,
+	breakatwhitespace=true,
+	postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+	tabsize=4,
+	captionpos=b
+}

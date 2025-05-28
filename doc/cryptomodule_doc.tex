@@ -44,7 +44,9 @@
 
 \usepackage{amsmath, amssymb, amsfonts, amsthm, mathtools}
 \usepackage{commath}
-\usepackage{algorithm, algorithmic}
+%\usepackage{algorithm, algorithmic}
+\usepackage[ruled,linesnumbered]{algorithm2e}
+
 \usepackage{tcolorbox}
 \tcbset{colback=white, arc=5pt}
 \newcommand{\defbox}[2][]{%
@@ -135,7 +137,7 @@
 	tabsize=3,
 	basicstyle=\small\ttfamily,
 	keywordstyle=\bfseries\color{blue},
-	morekeywords={printf, scanf, main, size_t, uint8_t, uint16_t, uint32_t, uint64_t, u8, u32},
+	morekeywords={printf, scanf, main, size_t, uint8_t, uint16_t, uint32_t, uint64_t, u8, u32, u64, u128, i32, i64, i128},
 	commentstyle=\itshape\color{teal!70!black},
 	stringstyle=\color{orange!90!black},
 	numbers=left,
@@ -146,6 +148,7 @@
 	breaklines=true,
 	breakatwhitespace=true,
 	escapeinside={(*@}{@*)},
+	postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
 	frame=single
 }
 \renewcommand{\lstlistingname}{Code}
@@ -732,7 +735,6 @@ typedef struct __ModeOfOperationContext__ {
 %	\input{memory_layout/ModeOfOperationContext.tex}
 %\end{figure}
 
-\newpage
 \subsection{Electronic Codebook (ECB)}
 TBA
 \subsection{Cipher Block Chaining (CBC)}

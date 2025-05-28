@@ -1,14 +1,134 @@
+\begin{itemize}
+	\item \textbf{Specification:} [NIST SP 800-38D] \\
+	\url{https://csrc.nist.gov/pubs/sp/800/38/d/final}
+	\item \textbf{Implementation:} \\
+	\url{https://github.com/openssl/openssl/blob/master/crypto/modes/gcm128.c}
+\end{itemize}
+%\paragraph{References:} 
+%\cite{McGrewViega2004gcm}
+\begin{figure}[h!]\centering
+\includegraphics[scale=.325]{images/mode-gcm}
+\caption{Illustration of ${\rm GCM}\text{-}{\rm AE}_K (IV, P, A) = (C, T)$ in NIST SP 800-38D (p16).}
+\end{figure}
 
-\paragraph{References:} 
-\cite{McGrewViega2004gcm}
-\begin{center}
-\includegraphics[scale=.955]{tikz/GCM_encryption}
-\end{center}
+%------------------------------------------------------------
+\begin{algorithm}[H]
+	\caption{GCM Authenticated Encryption ${\rm GCM\text{-}AE}_K(IV,P,A)$}\label{alg:gcm-ae}
+	\KwIn{\begin{itemize}
+			\item 
+		\end{itemize}Key $K$, IV, Plaintext $P$, AAD $A$, tag‐length $t$}
+	\KwOut{Ciphertext $C$, Authentication Tag $T$}
+	% prerequisites
+	$H \gets \mathrm{CIPH}_K(\texttt{0}^{128})$\;
+	\uIf{$|\,\mathrm{IV}\,| = 96$}{
+		$J_0 \gets \mathrm{IV}\,\|\,0^{31}\,\|\,1$\;
+	}\Else{
+		$s \gets 128\cdot\bigl\lceil|\,\mathrm{IV}\,|/128\bigr\rceil - |\,\mathrm{IV}\,|$\;
+		$J_0 \gets \mathrm{GHASH}_H\bigl(\mathrm{IV}\,\|\,0^s\,\|\,[\!|\,\mathrm{IV}\,|\!]_{64}\bigr)$\;
+	}
+	$C \gets \mathrm{GCTR}_K\bigl(\mathrm{inc}_{32}(J_0),\,P\bigr)$\;
+	\BlankLine
+	$v \gets 128\cdot\lceil|A|/128\rceil - |A|$\;
+	$u \gets128\cdot\lceil|C|/128\rceil - |C|$\;
+	$S \gets \mathrm{GHASH}_H\bigl(A\,\|\,0^v\,\|\,C\,\|\,0^u\,\|\,[\!|A|\!]_{64}\,\|\,[\!|C|\!]_{64}\bigr)$\;
+	$T \gets \mathrm{MSB}_t\bigl(\mathrm{GCTR}_K(J_0,\,S)\bigr)$\;
+	\Return{$(C,T)$}\;
+\end{algorithm}
 
-%\begin{figure}[h!]\centering
-%\includegraphics[scale=1.25]{tikz/gcm_mode}
-%\end{figure}
+%------------------------------------------------------------
+\begin{algorithm}[H]
+\caption{GCM Authenticated Decryption (GCM-AD\_K)}\label{alg:gcm-ad}
+\KwIn{Key $K$, IV, Ciphertext $C$, AAD $A$, Tag $T$, tag‐length $t$}
+\KwOut{Plaintext $P$ or \textsf{FAIL}}
+\If{$|T|\neq t$ \textbf{or} lengths not supported}{%
+	\Return{\textsf{FAIL}}%
+}
+$H \gets \mathrm{CIPH}_K(0^{128})$\;
+\uIf{$|\,\mathrm{IV}\,| = 96$}{
+	$J_0 \gets \mathrm{IV}\,\|\,0^{31}\,\|\,1$\;
+}
+\Else{
+	$s \gets 128\cdot\bigl\lceil|\,\mathrm{IV}\,|/128\bigr\rceil - |\,\mathrm{IV}\,|$\;
+	$J_0 \gets \mathrm{GHASH}_H\bigl(\mathrm{IV}\,\|\,0^s\,\|\,[\!|\,\mathrm{IV}\,|\!]_{64}\bigr)$\;
+}
+$P \gets \mathrm{GCTR}_K\bigl(\mathrm{inc}_{32}(J_0),\,C\bigr)$\;
+\BlankLine
+$v \gets 128\cdot\lceil|A|/128\rceil - |A|$\;\quad
+$u \gets128\cdot\lceil|C|/128\rceil - |C|$\;
+$S \gets \mathrm{GHASH}_H\bigl(A\,\|\,0^v\,\|\,C\,\|\,0^u\,\|\,[\!|A|\!]_{64}\,\|\,[\!|C|\!]_{64}\bigr)$\;
+$T' \gets \mathrm{MSB}_t\bigl(\mathrm{GCTR}_K(J_0,\,S)\bigr)$\;
+\If{$T' = T$}{
+	\Return{$P$}\;
+}
+\Else{
+	\Return{\textsf{FAIL}}\;
+}
+\end{algorithm}
 
+\newpage
+\subsection{Data Structure}
+\begin{lstlisting}[style=cstyle]
+#if defined(__x86_64) || defined(__x86_64__)
+#	define BSWAP8(x) ({ u64 ret_=(x); \
+						asm ("bswapq %0"\
+						: "+r"(ret_)); ret_; })
+#   define BSWAP4(x) ({ u32 ret_=(x); \
+						asm ("bswapl %0" \
+						: "+r"(ret_));   ret_; })
+#endif
+
+#if defined(BSWAP4) && !defined(STRICT_ALIGNMENT)
+# define GETU32(p)       BSWAP4(*(const u32 *)(p))
+# define PUTU32(p,v)     *(u32 *)(p) = BSWAP4(v)
+#else
+# define GETU32(p)       ((u32)(p)[0]<<24|(u32)(p)[1]<<16|(u32)(p)[2]<<8|(u32)(p)[3])
+# define PUTU32(p,v)     ((p)[0]=(u8)((v)>>24),(p)[1]=(u8)((v)>>16),(p)[2]=(u8)((v)>>8),(p)[3]=(u8)(v))
+#endif
+
+/*- GCM definitions */ typedef struct {
+	u64 hi, lo;
+} u128;
+
+
+typedef void (*gcm_init_fn)(u128 Htable[16], const u64 H[2]);
+typedef void (*gcm_ghash_fn)(u64 Xi[2], const u128 Htable[16], const u8 *inp, size_t len);
+typedef void (*gcm_gmult_fn)(u64 Xi[2], const u128 Htable[16]);
+struct gcm_funcs_st {
+	gcm_init_fn ginit;
+	gcm_ghash_fn ghash;
+	gcm_gmult_fn gmult;
+};	
+	
+struct gcm128_context {
+	/* Following 6 names follow names in GCM specification */
+	union {
+		u64 u[2];
+		u32 d[4];
+		u8 c[16];
+		size_t t[16 / sizeof(size_t)];
+	} Yi, EKi, EK0, len, Xi, H;
+	/*
+	* Relative position of Yi, EKi, EK0, len, Xi, H and pre-computed Htable is
+	* used in some assembler modules, i.e. don't change the order!
+	*/
+	u128 Htable[16];
+	struct gcm_funcs_st funcs;
+	unsigned int mres, ares;
+	block128_f block;
+	void *key;
+};
+\end{lstlisting}
+
+\newpage
+\subsection{title}
+
+
+
+
+
+
+
+\iffalse
 \subsection{Multiplication in $\GF(2^{128})$}
 \begin{definition}
 	Let \(\mathbb F_2 = \{0,1\}\) be the field with two elements.  Fix an irreducible polynomial
@@ -132,3 +252,4 @@ TBA
 %		\RETURN \(c\)
 %	\end{algorithmic}
 %\end{algorithm}
+\fi
