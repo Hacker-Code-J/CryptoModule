@@ -98,7 +98,13 @@
     "api_cryptomodule.h": "c",
     "mode_gcm.h": "c",
     "mode_ecb.h": "c",
-    "random": "c"
+    "random": "c",
+    "mode.h": "c",
+    "vector": "c",
+    "memory": "c",
+    "system_error": "c",
+    "string.h": "c",
+    "bit": "c"
   },
   "files.exclude": {
     "**/*.vo": true,
