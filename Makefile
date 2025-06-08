@@ -1,33 +1,28 @@
-# Compact Makefile for CryptoModule
-CC       := gcc
-CFLAGS   := -std=c99 -O2 -Wall -Wextra -Iinclude
-SRCDIR   := src
-OBJDIR   := obj
-TARGET   := CryptoModule
+# Makefile at project root (my_ecdsa/)
 
-SOURCES  := $(SRCDIR)/main.c \
-	$(SRCDIR)/block/aes.c \
-	$(SRCDIR)/common/mem.c \
-	$(SRCDIR)/mode/cbc128.c $(SRCDIR)/mode/ctr128.c $(SRCDIR)/mode/gcm128.c
-OBJECTS  := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES))
-DEPS     := $(OBJECTS:.o=.d)
+FLINT_CFLAGS := $(shell pkg-config --cflags flint)
+FLINT_LIBS   := $(shell pkg-config --libs flint)
 
-.PHONY: all run clean rebuild
-all: $(TARGET)
+CC := gcc
+CFLAGS := -O2 -Wall -Wextra -Iinclude $(FLINT_CFLAGS)
+LDFLAGS := $(FLINT_LIBS)
 
-$(TARGET): $(OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $^
+LIB_OBJS := src/ecdsa.o
+LIB := libecdsa.a
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
+all: $(LIB) test_ecdsa
 
--include $(DEPS)
+$(LIB): $(LIB_OBJS)
+	ar rcs $@ $^
 
-run: all
-	./$(TARGET)
+test_ecdsa: src/test_ecdsa.o $(LIB)
+	$(CC) -o $@ src/test_ecdsa.o -L. -lecdsa $(LDFLAGS)
+
+src/ecdsa.o: src/ecdsa.c src/ecdsa.h
+	$(CC) $(CFLAGS) -c src/ecdsa.c -o $@
+
+src/test_ecdsa.o: src/test_ecdsa.c src/ecdsa.h
+	$(CC) $(CFLAGS) -c src/test_ecdsa.c -o $@
 
 clean:
-	rm -rf $(OBJDIR) $(TARGET)
-
-rebuild: clean all
+	rm -f $(LIB) test_ecdsa src/*.o

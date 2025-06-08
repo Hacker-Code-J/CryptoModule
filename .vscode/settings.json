@@ -104,7 +104,15 @@
     "memory": "c",
     "system_error": "c",
     "string.h": "c",
-    "bit": "c"
+    "bit": "c",
+    "nn.h": "c",
+    "words.h": "c",
+    "stdarg.h": "c",
+    "stdlib.h": "c",
+    "time.h": "c",
+    "utils_rand.h": "c",
+    "nn_mul_public.h": "c",
+    "utils.h": "c"
   },
   "files.exclude": {
     "**/*.vo": true,

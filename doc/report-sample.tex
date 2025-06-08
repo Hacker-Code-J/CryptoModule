@@ -1,0 +1,366 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage{kotex}
+\usepackage[margin=1in]{geometry}            % Page margins
+\usepackage{graphicx}                        % Images and logos
+\usepackage{titlesec}                        % Custom section formatting
+\usepackage{fancyhdr}                        % Headers and footers
+\usepackage{setspace}                        % Line spacing
+\usepackage{hyperref}                        % Hyperlinks
+\bibliographystyle{alpha}
+\usepackage{enumitem}                        % Customized lists
+\usepackage{lmodern}                         % Enhanced fonts
+\usepackage{xcolor}                          % Color definitions
+\usepackage{array}                           % Table formatting
+\usepackage{listings}                        % For code listings
+
+\usepackage{multicol}
+
+\usepackage{dirtree}
+% adjust the indent size if you like:
+%\renewcommand{\DTbaselinestretch}{1.1}
+%\setcounter{DTlinenosize}{0}6
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,positioning}
+\input{lib/crypto.symbols}
+\usetikzlibrary{shapes.multipart, arrows.meta, positioning, matrix}
+\usetikzlibrary{trees}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.17}
+\usepackage{pgfgantt}
+% define your status‐styles once
+\tikzset{
+	notstarted/.style = {circle,draw,fill=gray!20,minimum size=6mm,inner sep=0pt},
+	inprogress/.style = {circle,draw,fill=yellow!60,minimum size=6mm,inner sep=0pt},
+	done/.style        = {circle,draw,fill=green!60,minimum size=6mm,inner sep=0pt},
+}
+
+\usepackage{amsmath, amssymb, amsfonts, amsthm, mathtools}
+\usepackage{commath}
+%\usepackage{algorithm, algorithmic}
+\usepackage[ruled,linesnumbered]{algorithm2e}
+
+\usepackage{tcolorbox}
+\tcbset{colback=white, arc=5pt}
+\newcommand{\defbox}[2][]{%
+	\begin{tcolorbox}[colframe=black, title={\color{white}\bfseries #1}]
+		#2
+	\end{tcolorbox}
+}
+
+\usepackage{adjustbox}
+
+% Fonts
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{newpxtext,newpxmath}
+\usepackage{sectsty}
+
+% Table
+\usepackage{booktabs}
+\usepackage{multirow}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Custom Commands for Notation and Symbols
+\newcommand{\bit}{\{0,1\}}
+\newcommand{\GF}{\operatorname{GF}}
+\newcommand{\xor}{\oplus}
+\newcommand{\Cons}{\operatorname{Cons}}
+\newcommand{\E}{\operatorname{E}}
+\newcommand{\Einv}{\operatorname{E}^{-1}}
+\newcommand{\PRP}{\operatorname{PRP}}
+\newcommand{\KeySpace}{\{0,1\}^k}
+\newcommand{\BlockSpace}{\{0,1\}^n}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Ex}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\supp}{\operatorname{supp}}
+\newcommand{\floor}[1]{\lfloor #1 \rfloor}
+\newcommand{\ceil}[1]{\lceil #1 \rceil}
+\newcommand{\AES}{\textsf{AES}}
+\newcommand{\F}{\mathbb{F}}
+
+%-------------------------
+% Custom Fonts and Colors
+%-------------------------
+%\allsectionsfont{\sffamily\bfseries}         % Sans-serif, bold section titles
+
+% Define a rule command for the cover page
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
+%-------------------------
+% Listing Settings
+%-------------------------
+\usepackage{listings}
+\lstset{
+	basicstyle=\footnotesize\ttfamily,
+	breaklines=true,
+	frame=single,
+	columns=fullflexible,
+	captionpos=b,
+	numbers=left
+}
+\lstdefinestyle{cstyle}{
+	language=C,
+	tabsize=3,
+	basicstyle=\small\ttfamily,
+	keywordstyle=\bfseries\color{blue},
+	morekeywords={printf, scanf, main, size_t, uint8_t, uint16_t, uint32_t, uint64_t, u8, u32, u64, u128, i32, i64, i128},
+	commentstyle=\itshape\color{teal!70!black},
+	stringstyle=\color{orange!90!black},
+	numbers=left,
+	numbersep=5pt,
+	numberstyle=\tiny\color{gray},
+	columns=fullflexible,
+	showstringspaces=false,
+	breaklines=true,
+	breakatwhitespace=true,
+	escapeinside={(*@}{@*)},
+	postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+	frame=single
+}
+\renewcommand{\lstlistingname}{Code}
+% Listing style
+\lstset{
+	basicstyle=\ttfamily\small,
+	keywordstyle=\color{blue},
+	stringstyle=\color{red!60!black},
+	commentstyle=\color{gray},
+	breaklines=true,
+	numbers=left,
+	numberstyle=\tiny,
+	frame=single,
+	showspaces=false,
+	showstringspaces=false
+}
+
+\title{Analysis and Implementation of ECDSA over secp256r1 in \texttt{libecc}}
+\author{Your Name\\Cryptography Lab, XYZ University}
+\date{\today}
+
+\begin{document}
+	\maketitle
+	
+	\begin{abstract}
+		In this report, we analyze the ECDSA (Elliptic Curve Digital Signature Algorithm) implementation in the \texttt{libecc} library, focusing on the secp256r1 (P-256) curve. We cross-reference the FIPS 186-5 specification with the source code, detailing how domain parameters are loaded, how big-integer arithmetic is realized, how point-operations are implemented, and how the \texttt{ecdsa\_sign()} and \texttt{ecdsa\_verify()} functions faithfully follow the standard. Security considerations and testing results are also discussed.
+	\end{abstract}
+	
+	\tableofcontents
+	\newpage
+	
+	\section{Introduction}
+	\subsection{Background}
+	ECDSA is an elliptic-curve variant of the Digital Signature Algorithm, widely used for secure digital signatures. secp256r1 (P-256) is a NIST-recommended curve with 256-bit security.
+	
+	\subsection{Purpose and Scope}
+	This report details the mapping between the ECDSA specification (FIPS 186-5) and the \texttt{libecc} C implementation, limited to secp256r1. We assume familiarity with basic modular arithmetic and elliptic-curve fundamentals.
+	
+	\section{ECDSA Specification Overview}
+	\subsection{Domain Parameters for secp256r1}
+	The secp256r1 curve is defined by:
+	\begin{align*}
+		p &= \text{0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF},\\
+		a &= p - 3,\\
+		b &= \text{0x5AC635D8AA3A93E7B3EBBD55769886BC651D06B0CC53B0F63BCE3C3E27D2604B},\\
+		G_x &= \text{0x6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296},\\
+		G_y &= \text{0x4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5},\\
+		n &= \text{0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551},\\
+		h &= 1.
+	\end{align*}
+	
+	\subsection{Key-Pair Generation}
+	\begin{enumerate}
+		\item Select private key $d \in [1,n-1]$ uniformly at random.
+		\item Compute public key $Q = d\cdot G$ on the curve.
+	\end{enumerate}
+	
+	\subsection{Signature Generation}
+	Steps per FIPS 186-5:
+	\begin{enumerate}
+		\item Compute $e = \mathrm{Hash}(m) \bmod n$.\label{step:hash}
+		\item Select random nonce $k \in [1,n-1]$.\label{step:nonce}
+		\item Compute $(x_1,y_1) = k\cdot G$, set $r = x_1 \bmod n$; if $r=0$, go back to \ref{step:nonce}.\label{step:r}
+		\item Compute $s = k^{-1}(e + d\,r) \bmod n$; if $s=0$, go back to \ref{step:nonce}.\label{step:s}
+		\item Output signature $(r,s)$.
+	\end{enumerate}
+	
+	\subsection{Signature Verification}
+	\begin{enumerate}
+		\item Verify $1 \le r,s \le n-1$. If not, reject.\label{step:verify1}
+		\item Compute $e = \mathrm{Hash}(m) \bmod n$.\label{step:verify2}
+		\item Compute $w = s^{-1} \bmod n$.\label{step:verify3}
+		\item Compute $u_1 = e\,w \bmod n$, $u_2 = r\,w \bmod n$.\label{step:verify4}
+		\item Compute $P = u_1\cdot G + u_2\cdot Q$. If $P$ is at infinity, reject.\label{step:verify5}
+		\item Let $v = P_x \bmod n$. Accept if $v = r$.\label{step:verify6}
+	\end{enumerate}
+	
+	\section{Code Repository Layout}
+\begin{lstlisting}
+libecc/
+├── include/libecc
+│   ├── curves/known/ec_params_secp256r1.h
+│   ├── curves/ec_params.h
+│   ├── curves/aff_pt.h
+│   ├── curves/ec_shortw.h
+│   ├── nn/nn.h
+│   ├── nn/nn_rand.h
+│   ├── sig/ecdsa_common.h
+│   ├── sig/ecdsa.h
+│   ├── hash/sha256.h
+│   └── utils/utils_rand.h
+└── src
+├── curves/ec_params.c
+├── curves/aff_pt.c
+├── curves/ec_shortw.c
+├── nn/nn.c, nn_add.c, nn_mul.c, nn_modinv.c, nn_rand.c
+├── sig/ecdsa_common.c, ecdsa.c
+├── hash/sha256.c
+└── utils/utils_rand.c
+\end{lstlisting}
+	
+\section{Mapping Specification to Code}
+
+\subsection{Domain Parameters}
+\subsubsection{Code: \texttt{ec\_params\_secp256r1.h}}
+\begin{lstlisting}[language=C]
+#define SECP256R1_P_HEX   "FFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF"
+#define SECP256R1_A_HEX   "FFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFC"
+#define SECP256R1_B_HEX   "5AC635D8AA3A93E7B3EBBD55769886BC651D06B0CC53B0F63BCE3C3E27D2604B"
+#define SECP256R1_GX_HEX  "6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296"
+#define SECP256R1_GY_HEX  "4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5"
+#define SECP256R1_N_HEX   "FFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551"
+#define SECP256R1_H      1
+\end{lstlisting}
+
+\subsubsection{Code: \texttt{ec\_params\_load\_shortw}}
+\begin{lstlisting}[language=C]
+int ec_params_load_shortw(ec_curve_shortw_t *C, const char *name) {
+	if (strcmp(name, "SECP256R1") == 0) {
+		nn_set_hex(&C->p,  SECP256R1_P_HEX);
+		nn_set_hex(&C->a,  SECP256R1_A_HEX);
+		nn_set_hex(&C->b,  SECP256R1_B_HEX);
+		nn_set_hex(&C->Gx, SECP256R1_GX_HEX);
+		nn_set_hex(&C->Gy, SECP256R1_GY_HEX);
+		nn_set_hex(&C->n,  SECP256R1_N_HEX);
+		C->h = SECP256R1_H;
+		return 0;
+	}
+	return -1;
+}
+\end{lstlisting}
+
+\subsection{Big-Integer (NN) Arithmetic}
+\begin{lstlisting}[language=C]
+// nn_t definition in nn.h
+typedef struct {
+	uint32_t words[NN_MAX_WORDS];
+	int      used;
+	int      sign;
+} nn_t;
+
+// Core operations:
+void nn_set_hex(nn_t *r, const char *hexstr);
+void nn_mod_mul(nn_t *r, const nn_t *a, const nn_t *b, const nn_t *m);
+void nn_mod_inv(nn_t *r, const nn_t *a, const nn_t *m);
+\end{lstlisting}
+
+\subsection{Elliptic-Curve Arithmetic}
+\begin{lstlisting}[language=C]
+// ec_shortw_add in ec_shortw.c
+void ec_shortw_add(affine_point_t *R,
+const affine_point_t *P,
+const affine_point_t *Q,
+const ec_curve_shortw_t *C) {
+	// handle infinity cases...
+	nn_sub(&num, &Q->y, &P->y);
+	nn_sub(&den, &Q->x, &P->x);
+	nn_mod_inv(&den_inv, &den, &C->p);
+	nn_mod_mul(&lambda, &num, &den_inv, &C->p);
+	// compute x3, y3...
+	R->x = x3; R->y = y3; R->is_inf = 0;
+}
+\end{lstlisting}
+
+\subsection{ECDSA Key Generation}
+\begin{lstlisting}[language=C]
+int ecdsa_keygen(ssize_t curve_id, nn_t *priv, affine_point_t *pub) {
+	ec_curve_shortw_t C;
+	get_curve_shortw(&C, (int)curve_id);
+	do { nn_rand(priv, &C.n); }
+	while (nn_is_zero(priv) || nn_cmp(priv, &C.n) >= 0);
+	affine_point_t G = { C.Gx, C.Gy, 0 };
+	ec_shortw_mul(pub, &G, priv, &C);
+	return 0;
+}
+\end{lstlisting}
+
+\subsection{ECDSA Signature Generation}
+\begin{lstlisting}[language=C]
+int ecdsa_sign(ssize_t curve_id, const nn_t *priv,
+const uint8_t *msg, size_t msglen,
+ecdsa_sig_t *sig) {
+	ec_curve_shortw_t C;
+	get_curve_shortw(&C, (int)curve_id);
+	uint8_t hash[32]; sha256(msg,msglen,hash);
+	nn_t e; ecdsa_hash_to_int(&e,hash,&C.n);
+	nn_t k, k_inv, tmp; affine_point_t Rpt, G = {C.Gx,C.Gy,0};
+	do {
+		do { nn_rand(&k,&C.n); } while (...);
+		ec_shortw_mul(&Rpt,&G,&k,&C);
+		nn_mod(&sig->r,&Rpt.x,&C.n);
+		if (nn_is_zero(&sig->r)) continue;
+		nn_mul(&tmp, priv, &sig->r);
+		nn_add(&tmp, &tmp, &e);
+		nn_mod(&tmp, &tmp, &C.n);
+		nn_mod_inv(&k_inv, &k, &C.n);
+		nn_mod_mul(&sig->s, &k_inv, &tmp, &C.n);
+	} while (nn_is_zero(&sig->s));
+	return 0;
+}
+\end{lstlisting}
+
+\subsection{ECDSA Signature Verification}
+\begin{lstlisting}[language=C]
+int ecdsa_verify(ssize_t curve_id,
+const affine_point_t *pub,
+const uint8_t *msg, size_t msglen,
+const ecdsa_sig_t *sig) {
+	ec_curve_shortw_t C; get_curve_shortw(&C,(int)curve_id);
+	if (invalid_range(sig->r, sig->s, &C.n)) return 0;
+	uint8_t hash[32]; sha256(msg,msglen,hash);
+	nn_t e; ecdsa_hash_to_int(&e,hash,&C.n);
+	nn_t w; nn_mod_inv(&w, &sig->s, &C.n);
+	nn_t u1,u2; nn_mod_mul(&u1,&e,&w,&C.n); nn_mod_mul(&u2,&sig->r,&w,&C.n);
+	affine_point_t G={C.Gx,C.Gy,0}, u1G,u2Q, Rpt;
+	ec_shortw_mul(&u1G,&G,&u1,&C);
+	ec_shortw_mul(&u2Q,pub,&u2,&C);
+	ec_shortw_add(&Rpt,&u1G,&u2Q,&C);
+	if (Rpt.is_inf) return 0;
+	nn_t v; nn_mod(&v,&Rpt.x,&C.n);
+	return (nn_cmp(&v,&sig->r)==0);
+}
+\end{lstlisting}
+
+\section{Testing and Validation}
+\subsection{Self-Test Vectors}
+Discuss test harness in \texttt{src/tests/ec\_self\_tests.c} using known signatures.
+
+\subsection{Randomized and Interoperability Tests}
+Describe cross-verification with OpenSSL, random message tests, etc.
+
+\section{Security Considerations}
+Discuss constant-time, public-key validation, deterministic k (RFC 6979), side-channels.
+
+\section{Conclusion}
+Summarize mapping fidelity, correctness, compliance, and recommended improvements.
+
+\section*{References}
+\begin{itemize}
+	\item FIPS 186-5: Digital Signature Standard (DSS).
+	\item SEC 2: Recommended Elliptic Curve Domain Parameters.
+	\item NIST P-256 specification.
+	\item \texttt{libecc} source repository (commit XYZ).
+\end{itemize}
+
+\end{document}
