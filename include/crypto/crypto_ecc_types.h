@@ -32,65 +32,14 @@ typedef enum {
 /* Hash algorithm types */
 typedef enum {
 	UNKNOWN_HASH_ALG = 0,
-#ifdef HASH_SHA224
-	SHA224 = 1,
-#endif
 #ifdef HASH_SHA256
 	SHA256 = 2,
-#endif
-#ifdef HASH_SHA384
-	SHA384 = 3,
-#endif
-#ifdef HASH_SHA512
-	SHA512 = 4,
-#endif
-#ifdef HASH_SHA3_224
-	SHA3_224 = 5,
 #endif
 #ifdef HASH_SHA3_256
 	SHA3_256 = 6,
 #endif
-#ifdef HASH_SHA3_384
-	SHA3_384 = 7,
-#endif
-#ifdef HASH_SHA3_512
-	SHA3_512 = 8,
-#endif
-#ifdef HASH_SHA512_224
-	SHA512_224 = 9,
-#endif
-#ifdef HASH_SHA512_256
-	SHA512_256 = 10,
-#endif
-#ifdef HASH_SM3
-        SM3 = 11,
-#endif
 #ifdef HASH_SHAKE256
 	SHAKE256 = 12,
-#endif
-#ifdef HASH_STREEBOG256
-	STREEBOG256 = 13,
-#endif
-#ifdef HASH_STREEBOG512
-	STREEBOG512 = 14,
-#endif
-#ifdef HASH_RIPEMD160
-	RIPEMD160 = 15,
-#endif
-#ifdef HASH_BELT_HASH
-	BELT_HASH = 16,
-#endif
-#ifdef HASH_BASH224
-	BASH224 = 17,
-#endif
-#ifdef HASH_BASH256
-	BASH256 = 18,
-#endif
-#ifdef HASH_BASH384
-	BASH384 = 19,
-#endif
-#ifdef HASH_BASH512
-	BASH512 = 20,
 #endif
 } hash_alg_type;
 

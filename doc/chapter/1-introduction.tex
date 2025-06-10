@@ -1,0 +1,47 @@
+\chapter{Introduction}
+This document details the design, implementation, and analysis of two C applications that leverage Elliptic Curve Digital Signature Algorithm (ECDSA) to ensure data integrity and non-repudiation in big data processing environments.\par
+The first application, `\texttt{filecheck\_ecc}', provides command-line-based file signing and verification. The second application, a `\texttt{logtool\_ecc}' and `\texttt{logaggregator\_ecc}', establishes a framework for creating cryptographically signed, tamper-evident log streams suitable for distributed systems. Both systems are built upon the modular \texttt{libecc}\cite{libecc-github} cryptographic library, utilizing the SECP256R1 curve and SHA-256 (or SHA3-256) hashing algorithm.\par
+This document presents the system architecture, a comprehensive developer API guide, performance benchmarks, and security considerations for both applications, demonstrating a practical approach to embedding strong cryptographic guarantees into data-intensive workflows.
+\section{Project Scope and Objectives}
+
+This report presents two prototype applications built around ECDSA on the NIST P-256 curve:  
+\begin{enumerate}
+	\item A \emph{File Integrity Checker} that signs and verifies large files via streaming SHA-256 and chunked ECDSA operations.  
+	\item A \emph{Tamper-Evident Log Aggregator} for real-time signing of high-volume log entries with rotating output chunks.  
+\end{enumerate}
+The primary objectives are to demonstrate scalable ECDSA integration, evaluate performance trade-offs, and document design patterns for secure big data processing.
+
+This project aims to address the aforementioned problem by designing and implementing a framework of two C-based applications built upon the \texttt{libecc} library. The scope is focused on providing practical, command-line-driven tools that can be easily scripted and integrated into existing data pipelines. The primary objectives are as follows:
+\begin{enumerate}
+	\item \textbf{Develop a Secure File Integrity Tool:} To create a robust utility, \texttt{filecheck\_secure}, for signing and verifying the integrity and authenticity of large data files, such as datasets, archives, and backups.
+	\item \textbf{Develop a Secure Logging Framework:} To build a suite of applications, \texttt{logtool} and \texttt{logaggregator}, capable of generating cryptographically signed, tamper-evident log entries and processing them in a streaming fashion.
+	\item \textbf{Utilize Industry-Standard Cryptography:} To implement all functionalities using the Elliptic Curve Digital Signature Algorithm (ECDSA) with the widely adopted SECP256R1 (NIST P-256) curve and the SHA-256 hash algorithm.
+	\item \textbf{Provide a Clear Developer Guide:} To document the core API functions used from the underlying cryptographic library, enabling other developers to extend the tools or build new secure applications.
+\end{enumerate}
+
+\section{Summary of Contributions}
+
+\begin{itemize}
+	\item \textbf{Modular C implementations} of streaming ECDSA signing and verification, optimized for large files and logs.  
+	\item \textbf{Design patterns} for chunked hashing, memory-bounded processing, and rotation of signed data segments.  
+	\item \textbf{Performance evaluation} and best practices for deploying ECDSA in high-throughput Linux environments.  
+\end{itemize}
+
+\section{Report Structure}
+
+The remainder of this report is organized as follows:
+
+\begin{itemize}
+	\item \textbf{Section 2:} Standards \& Specifications (FIPS 186-5 ECDSA, P-256 parameters).  
+	\item \textbf{Section 3:} System Architecture and Design Patterns.  
+	\item \textbf{Section 4:} File Integrity Checker—implementation details and benchmarks.  
+	\item \textbf{Section 5:} Tamper-Evident Log Aggregator—pipeline design and throughput results.  
+	\item \textbf{Section 6:} Performance \& Security Considerations, including key management.  
+	\item \textbf{Section 7:} Conclusion and Future Work.  
+\end{itemize}
+
+\subsection{Report Structure}
+The remainder of this report is organized as follows. Section 2 provides background on the cryptographic principles underlying the project, including ECC, ECDSA, and hash functions. Section 3 details the high-level system architecture and design choices. Sections 4 and 5 present the specific implementation details of the \texttt{filecheck\_secure} tool and the secure logging suite, respectively. Section 6 offers a comprehensive developer's guide to the API and its usage. Section 7 provides a performance and security analysis of the implemented systems. Finally, Section 8 concludes the report with a summary of findings and suggestions for future work.
+
+\newpage
+\input{tikz/report_structure}

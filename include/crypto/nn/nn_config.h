@@ -16,6 +16,7 @@
 #ifndef __NN_CONFIG_H__
 #define __NN_CONFIG_H__
 #include <crypto/words/words.h>
+#include <crypto/utils/utils.h>
 /*
  * We include the curves list to adapt the maximum NN size to P and Q
  * (prime and order of the curve).

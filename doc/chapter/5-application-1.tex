@@ -1,0 +1,404 @@
+\chapter{Application 1: The File Checker Tool}
+The \texttt{filecheck\_ecc} utility is a command-line application designed to provide cryptographic integrity and authenticity guarantees for file-based data. It serves as a foundational tool for securing data at rest, enabling users to generate key pairs, sign files of any size, and verify existing signatures.
+
+\section{Implementation of File Checker}
+\begin{lstlisting}[style=cstyle]
+/*
+* filecheck_ecc.c
+*
+* Sign and verify large files using ECDSA on SECP256R1.
+*
+* Usage:
+*   filecheck_ecc generate <key-base>
+*   filecheck_ecc sign     <key-base>_priv.bin <in-file> <sig-file>
+*   filecheck_ecc verify   <key-base>_pub.bin  <in-file> <sig-file>
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <crypto/cryptosig.h>
+
+#define CHUNK_SIZE 4096
+
+// #define SHA_ALG SHA256
+#define SHA_ALG SHA3_256
+
+/* Hex-encode a buffer */
+static char *to_hex(const uint8_t *buf, size_t len) {
+	static const char hex[] = "0123456789ABCDEF";
+	char *out = (char *)malloc(len*2 + 1);
+	for (size_t i = 0; i < len; i++) {
+		out[2*i]   = hex[buf[i] >> 4];
+		out[2*i+1] = hex[buf[i] & 0xF];
+	}
+	out[len*2] = '\0';
+	return out;
+}
+
+/* Trim CR/LF from end of string */
+static void trim_newline(char *s) {
+	size_t n = strlen(s);
+	while (n && (s[n-1]=='\n' || s[n-1]=='\r')) s[--n] = '\0';
+}
+
+/* Stream-hash 'path' via SHA-256 */
+static int stream_hash(const char *path, uint8_t *digest, uint8_t *dlen) {
+	const hash_mapping *hm;
+	if (get_hash_by_type(SHA_ALG, &hm) != 0) return -1;
+	hash_context ctx;
+	if (hm->hfunc_init(&ctx) != 0) return -1;
+	
+	FILE *f = fopen(path, "rb");
+	if (!f) return -1;
+	uint8_t buf[CHUNK_SIZE];
+	size_t n;
+	while ((n = fread(buf,1,CHUNK_SIZE,f)) > 0) {
+		hm->hfunc_update(&ctx, buf, (u32)n);
+	}
+	fclose(f);
+	
+	*dlen = hm->digest_size;
+	return hm->hfunc_finalize(&ctx, digest);
+}
+
+/* generate "<base>_priv.bin", "<base>_pub.bin" */
+static int do_generate(const char *base) {
+	ec_params params;
+	import_params(&params, &secp256r1_str_params);
+	
+	ec_key_pair kp;
+	if (ec_key_pair_gen(&kp, &params, ECDSA) != 0) {
+		fprintf(stderr, "Error: key generation failed\n"); return -1;
+	}
+	
+	/* Export private key */
+	u8 priv_sz = EC_STRUCTURED_PRIV_KEY_EXPORT_SIZE(&kp.priv_key);
+	u8 *priv_buf = (u8 *)malloc(priv_sz);
+	ec_structured_priv_key_export_to_buf(&kp.priv_key, priv_buf, priv_sz);
+	
+	char fn[256];
+	snprintf(fn, sizeof(fn), "%s_priv.bin", base);
+	FILE *f = fopen(fn, "wb");
+	fwrite(priv_buf,1,priv_sz,f);
+	fclose(f);
+	free(priv_buf);
+	
+	/* Export public key */
+	u8 pub_sz = EC_STRUCTURED_PUB_KEY_EXPORT_SIZE(&kp.pub_key);
+	u8 *pub_buf = (u8 *)malloc(pub_sz);
+	ec_structured_pub_key_export_to_buf(&kp.pub_key, pub_buf, pub_sz);
+	
+	snprintf(fn, sizeof(fn), "%s_pub.bin", base);
+	f = fopen(fn, "wb");
+	fwrite(pub_buf,1,pub_sz,f);
+	fclose(f);
+	free(pub_buf);
+	
+	printf("Key pair generated:\n"
+	"  Secret key: %s_priv.bin\n"
+	"  Public key:  %s_pub.bin\n", base, base);
+	return 0;
+}
+
+/* sign infile using privfile, write hex-DER to sigfile */
+static int do_sign(const char *privfile, const char *infile, const char *sigfile) {
+	/* load priv blob */
+	FILE *f = fopen(privfile, "rb");
+	if (!f) { perror(privfile); return -1; }
+	fseek(f,0,SEEK_END);
+	size_t sz = ftell(f);
+	fseek(f,0,SEEK_SET);
+	u8 *buf = (u8 *)malloc(sz);
+	fread(buf,1,sz,f);
+	fclose(f);
+	
+	ec_params params;
+	import_params(&params, &secp256r1_str_params);
+	ec_key_pair kp;
+	// 1) import *only* the private key
+	if (ec_structured_priv_key_import_from_buf(
+		&kp.priv_key, &params, buf, (u8)sz, ECDSA) != 0)
+	{
+		fprintf(stderr, "Error: invalid private key\n");
+		free(buf); return -1;
+	}
+	// 2) derive the public key from it
+	if (init_pubkey_from_privkey(&kp.pub_key, &kp.priv_key) != 0) {
+		fprintf(stderr, "Error: failed to derive public key\n"); return -1;
+	}
+	free(buf);
+	
+	/* hash file */
+	uint8_t digest[64]; u8 dlen;
+	if (stream_hash(infile, digest, &dlen) != 0) {
+		fprintf(stderr, "Error: hashing failed\n"); return -1;
+	}
+	
+	/* sign */
+	u8 siglen;
+	ec_get_sig_len(&params, ECDSA, SHA_ALG, &siglen);
+	u8 *sigbin = (u8 *)malloc(siglen);
+	if (ec_sign(sigbin, siglen, &kp, digest, dlen, ECDSA, SHA_ALG, NULL, 0) != 0) {
+		fprintf(stderr, "Error: signing failed\n");
+		free(sigbin); return -1;
+	}
+	
+	/* hex + write */
+	char *hex = to_hex(sigbin, siglen);
+	f = fopen(sigfile, "w");
+	fprintf(f, "%s\n", hex);
+	fclose(f);
+	
+	free(sigbin);
+	free(hex);
+	printf("Signed '%s' => '%s'\n", infile, sigfile);
+	return 0;
+}
+
+/* verify infile against hex-DER sig in sigfile using pubfile */
+static int do_verify(const char *pubfile, const char *infile, const char *sigfile) {
+	/* load pub blob */
+	FILE *f = fopen(pubfile, "rb");
+	if (!f) { perror(pubfile); return -1; }
+	fseek(f,0,SEEK_END);
+	size_t sz = ftell(f);
+	fseek(f,0,SEEK_SET);
+	u8 *buf = (u8 *)malloc(sz);
+	fread(buf,1,sz,f);
+	fclose(f);
+	
+	ec_params params;
+	import_params(&params, &secp256r1_str_params);
+	ec_pub_key pub;
+	// if (ec_structured_pub_key_import_from_buf(
+	//         &pub, &params, buf, (u8)sz, ECDSA) != 0)
+	if (ec_structured_pub_key_import_from_buf(
+	&pub, &params, buf, (u8)sz, ECDSA) != 0)
+	{
+		fprintf(stderr, "Error: invalid public key\n");
+		free(buf); return -1;
+	}
+	free(buf);
+	
+	/* hash file */
+	uint8_t digest[64]; u8 dlen;
+	if (stream_hash(infile, digest, &dlen) != 0) {
+		fprintf(stderr, "Error: hashing failed\n"); return -1;
+	}
+	
+	/* read + decode hex sig */
+	char *line = NULL; size_t cap=0;
+	f = fopen(sigfile, "r");
+	getline(&line, &cap, f);
+	fclose(f);
+	trim_newline(line);
+	size_t sl = strlen(line)/2;
+	u8 *sigbin = (u8 *)malloc(sl);
+	for (size_t i = 0; i < sl; i++)
+	sscanf(line + 2*i, "%2hhx", &sigbin[i]);
+	free(line);
+	
+	/* verify */
+	int rc = ec_verify(sigbin, (u8)sl,
+	&pub, digest, dlen,
+	ECDSA, SHA_ALG, NULL, 0);
+	free(sigbin);
+	if (rc == 0) {
+		printf("VALID signature for '%s'\n", infile); return 0;
+	} else {
+		printf("INVALID signature for '%s'\n", infile); return 1;
+	}
+}
+
+int main(int argc, char **argv) {
+	if (argc < 2) goto usage;
+	if (!strcmp(argv[1], "generate") && argc == 3)
+	return do_generate(argv[2]) ? 1 : 0;
+	if (!strcmp(argv[1], "sign") && argc == 5)
+	return do_sign(argv[2], argv[3], argv[4]) ? 1 : 0;
+	if (!strcmp(argv[1], "verify") && argc == 5)
+	return do_verify(argv[2], argv[3], argv[4]) ? 1 : 0;
+	
+	usage:
+	fprintf(stderr,
+	"Usage:\n"
+	"  %s generate <keybase>\n"
+	"  %s sign     <priv> <infile> <sigfile>\n"
+	"  %s verify   <pub>  <infile> <sigfile>\n",
+	argv[0], argv[0], argv[0]);
+	return 1;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[numbers=none]
+mkdir -p obj bin
+gcc -std=c99 -Wall -Wextra -O2 -Iinclude -c src/filecheck_ecc.c -o obj/filecheck_ecc.o
+gcc -std=c99 -Wall -Wextra -O2 -Iinclude -o bin/filecheck_ecc obj/filecheck_ecc.o \
+	lib/libarith.a lib/libec.a lib/libsign.a
+\end{lstlisting}
+
+\section{Example Scenario: File Checking}
+\subsection{Key Pair Generation (\texttt{generate})}
+This mode creates a new ECDSA key pair (a private key and its corresponding public key) using the SECP256R1 curve. The keys are then saved to disk in a simple, portable format.
+\begin{lstlisting}[numbers=none]
+@:~$ ./bin/filecheck_ecc generate mykey
+Key pair generated:
+	Secret key: mykey_priv.bin
+	Public key:  mykey_pub.bin
+@:~$ hexdump -x mykey_priv.bin 
+0000000    0101    1204    98e9    ffe0    4d0f    82f1    3749    0f99
+0000010    205e    f772    0bbd    74db    dadf    9c09    2efc    1947
+0000020    b726    00ca                                                
+0000023
+@:~$ hexdump -x mykey_pub.bin 
+0000000    0100    b604    246a    3768    298e    54dd    5ada    cac8
+0000010    54d3    b85c    9908    b657    f351    eda0    4a07    59b9
+0000020    446a    2856    2007    96f5    6fe9    9335    3e73    d9b2
+0000030    4eba    b504    41e1    3c83    33d6    afdc    0652    5a1f
+0000040    552b    ccbd    56c2    47a9    7f83    3356    3656    7cd1
+0000050    f4e1    8cde    72c3    675b    ceda    1401    2dc0    5329
+0000060    92c3    0009                                                
+0000063
+\end{lstlisting}
+\subsection{File Signing (\texttt{sign})}
+In this mode, the tool uses a specified private key to generate a digital signature for a given input file. The process involves first computing the SHA-256 hash of the input file and then signing that hash with the private key. The resulting signature is written to a separate output file.
+
+\begin{lstlisting}[style=py]
+"""
+generate_file.py
+
+Generate a large random binary file of a specified size.
+Usage:
+python3 random_file.py <output_file> <size> [--chunk <chunk_size>]
+e.g., python3 random_file.py largefile.bin 100M --chunk 1M
+e.g., python3 random_file.py largefile.bin 4G --chunk 8M
+"""
+
+import os
+import argparse
+
+def parse_size(size_str):
+	"""
+	Parse a human-friendly size string (e.g. '10M', '2G', '512K') into an integer number of bytes.
+	"""
+	size_str = size_str.strip().upper()
+	if size_str.endswith('G'):
+		return int(float(size_str[:-1]) * 1024**3)
+	if size_str.endswith('M'):
+		return int(float(size_str[:-1]) * 1024**2)
+	if size_str.endswith('K'):
+		return int(float(size_str[:-1]) * 1024)
+	return int(size_str)
+
+def generate_random_file(path, total_size, chunk_size=1_048_576):
+	"""
+	Write `total_size` random bytes to `path`, in chunks of `chunk_size` bytes.
+	"""
+	written = 0
+	with open(path, 'wb') as f:
+		while written < total_size:
+			to_write = min(chunk_size, total_size - written)
+			f.write(os.urandom(to_write))
+			written += to_write
+	print(f"Done: wrote {written} bytes to {path!r}")
+
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser(description="Generate a large random binary file.")
+	parser.add_argument('output', help="Output filename (e.g. largefile.bin)")
+	parser.add_argument(
+		'size',
+		help="Total size (e.g. 100M for 100 megabytes, 2G for 2 gigabytes)"
+	)
+	parser.add_argument(
+		'--chunk',
+		default='1M',
+		help="Chunk size for each write (default: 1M)"
+	)
+	args = parser.parse_args()
+	
+	total_bytes = parse_size(args.size)
+	chunk_bytes = parse_size(args.chunk)
+	generate_random_file(args.output, total_bytes, chunk_bytes)
+\end{lstlisting}
+
+\begin{lstlisting}[numbers=none]
+@:~$ python3 src/generate_file.py largefile.bin 1G --chunk 32M 
+Done: wrote 1073741824 bytes to 'largefile.bin'
+
+@:~$ ./bin/filecheck_ecc sign mykey_priv.bin largefile.bin largefile.sig 
+Signed 'largefile.bin' => 'largefile.sig'
+\end{lstlisting}
+
+\subsection{Signature Verification (\texttt{verify})}
+This mode performs the inverse operation of signing. It takes a public key, an input file, and a signature file as arguments. It re-computes the SHA-256 hash of the input file and uses the provided public key to verify that the signature corresponds to the computed hash. It then reports to the user whether the signature is VALID or INVALID.
+\begin{lstlisting}[numbers=none]
+@:~$ ./bin/filecheck_ecc verify mykey_pub.bin largefile.bin largefile.sig 
+VALID signature for 'largefile.bin'
+\end{lstlisting}
+
+%\section{Overview and Use Cases}
+%The primary purpose of \texttt{filecheck\_secure} is to replace insecure or non-existent integrity mechanisms (like checksums or MD5 hashes) with a robust, non-repudiable digital signature. Key use cases include:
+%\begin{itemize}
+%	\item \textbf{Verifying Software Distributions:} A software publisher can sign a release binary (e.g., a \texttt{.zip} archive or executable). End-users can then use the publisher's public key to verify that the software they downloaded is authentic and has not been tampered with by a third party.
+%	\item \textbf{Protecting Scientific Datasets:} Researchers can sign large datasets before sharing them. This ensures that collaborators are working with the canonical version of the data and that no accidental or malicious modifications have occurred.
+%	\item \textbf{Securing Configuration Files:} System administrators can sign critical configuration files. An automated monitoring script could then periodically verify these signatures to detect unauthorized changes to the system's configuration.
+%	\item \textbf{Auditable Data Archives:} In regulated industries, data archives must often be preserved for years. Signing an archive upon creation provides a permanent, verifiable record of its contents at that point in time.
+%\end{itemize}
+%
+%\section{Functional Modes}
+%The utility operates in one of three distinct modes, specified as the first command-line argument. This design provides a clear and unambiguous interface for the user.
+%
+%\subsection{Key Pair Generation (\texttt{generate})}
+%This mode is the entry point for a new user. It creates a new ECDSA key pair (a private key and its corresponding public key) using the SECP256R1 curve. The keys are then saved to disk in a simple, portable format.
+%
+%\subsection{File Signing (\texttt{sign})}
+%In this mode, the tool uses a specified private key to generate a digital signature for a given input file. The process involves first computing the SHA-256 hash of the input file and then signing that hash with the private key. The resulting signature is written to a separate output file.
+%
+%\subsection{Signature Verification (\texttt{verify})}
+%This mode performs the inverse operation of signing. It takes a public key, an input file, and a signature file as arguments. It re-computes the SHA-256 hash of the input file and uses the provided public key to verify that the signature corresponds to the computed hash. It then reports to the user whether the signature is VALID or INVALID.
+%
+%\section{Implementation Details}
+%The implementation of \texttt{filecheck\_secure} focuses on simplicity, portability, and scalability.
+%
+%\subsection{Command-Line Interface}
+%The tool is controlled via a simple and standard command-line syntax, making it easy to integrate into automated scripts.
+%\begin{lstlisting}[language=bash, caption={Command-line usage for filecheck\_secure.}]
+%	# 1. Generate a new key pair, saved as my_key_priv.pem and my_key_pub.pem
+%	$ ./filecheck_secure generate my_key
+%	Key pair generated:
+%	- Private key: my_key_priv.pem
+%	- Public key:  my_key_pub.pem
+%	
+%	# 2. Sign a data file with the private key
+%	$ ./filecheck_secure sign my_key_priv.pem large_dataset.csv dataset.sig
+%	File 'large_dataset.csv' signed successfully.
+%	Signature saved to 'dataset.sig'.
+%	
+%	# 3. Verify the signature using the public key
+%	$ ./filecheck_secure verify my_key_pub.pem large_dataset.csv dataset.sig
+%	Signature is VALID. File 'large_dataset.csv' is authentic.
+%\end{lstlisting}
+%Upon successful verification, the tool prints a confirmation message to standard output and returns an exit code of 0. On failure (e.g., an invalid signature, file not found, or incorrect arguments), it prints an error message to standard error and returns a non-zero exit code.
+%
+%\subsection{Key Storage and Management}
+%To maintain simplicity and portability, keys and signatures are stored as raw binary data that has been hex-encoded into plain text files. This allows for easy inspection, transmission, and use in various environments without concern for binary data corruption.
+%\begin{itemize}
+%	\item \textbf{Private Key File:} A file (e.g., \texttt{my\_key\_priv.pem}) containing the hex-encoded 32-byte private key.
+%	\item \textbf{Public Key File:} A file (e.g., \texttt{my\_key\_pub.pem}) containing the hex-encoded compressed or uncompressed public key point.
+%	\item \textbf{Signature File:} A file (e.g., \texttt{dataset.sig}) containing the hex-encoded ASN.1 DER-encoded signature.
+%\end{itemize}
+%Helper functions (\texttt{bytes\_to\_hex}, \texttt{hex\_to\_bytes}) were implemented to handle the conversion between the raw binary data used by \texttt{libecc} and this portable text-based storage format. While this format is simple, it necessitates strong filesystem-level permissions (e.g., read-only for the owner) to protect the private key files, as discussed further in Chapter 7.
+%
+%\subsection{Streaming Hash Implementation for Large Files}
+%A critical design feature of \texttt{filecheck\_secure} is its ability to process files of any size without consuming large amounts of memory. This is achieved by implementing a streaming hash mechanism. Instead of reading the entire file into memory at once, the application reads it in small, fixed-size chunks (4096 bytes).
+%
+%The process is as follows:
+%\begin{enumerate}
+%	\item Initialize a SHA-256 hash context using \texttt{libecc}'s `hfunc\_init`.
+%	\item Enter a loop that reads a chunk of the file into a buffer using `fread`.
+%	\item For each chunk read, update the hash context by passing the buffer to \texttt{libecc}'s `hfunc\_update`.
+%	\item After the last chunk has been processed, finalize the hash computation using `hfunc\_finalize` to produce the final 32-byte digest.
+%\end{enumerate}
+%This approach ensures that the memory footprint of the application remains constant and minimal, regardless of whether the input file is a few kilobytes or several terabytes in size. This makes the tool highly scalable and suitable for its intended use in big data environments where datasets often exceed available system RAM.

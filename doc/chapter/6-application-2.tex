@@ -1,0 +1,637 @@
+\chapter{Application 2: The Logging Suite}
+While \texttt{filecheck\_ecc} is designed for securing static, file-based data, modern big data systems rely heavily on processing continuous streams of data, such as application logs, metrics, and events. To address this domain, the Logging Suite was developed. This suite consists of two specialized, interoperable utilities designed to provide cryptographic integrity for streaming data: \texttt{logtool\_ecc}, for creating individual signed log entries, and \texttt{logaggregator\_ecc}, for signing a high-throughput stream of log data in real-time.
+
+\section{Implementation of Logging Suite}
+\subsection*{\texttt{logtool\_ecc.c}}
+\begin{lstlisting}[style=cstyle]
+/*
+* src/logtool_ecc.c
+*
+* A Linux command-line tool for signing and verifying structured log entries
+* using libecc’s real ECDSA on P-256 (SECP256R1).
+*
+* Each log entry is a line with four '|'-separated fields:
+*   timestamp|level|message|hex_signature
+*
+* Usage:
+*   logtool_ecc generate <keybase>
+*   logtool_ecc write    <privkey_bin> <logfile> <level> <message...>
+*   logtool_ecc verify   <pubkey_bin>  <logfile>
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+#include <stdint.h>
+
+#include <crypto/cryptosig.h>
+
+/* Hex-encode a buffer */
+static char *to_hex(const uint8_t *buf, size_t len) {
+	static const char hex[] = "0123456789ABCDEF";
+	char *out = malloc(len*2 + 1);
+	for (size_t i = 0; i < len; i++) {
+		out[2*i]   = hex[buf[i] >> 4];
+		out[2*i+1] = hex[buf[i] & 0xF];
+	}
+	out[len*2] = '\0';
+	return out;
+}
+
+/* Trim CR/LF from end of string */
+static void trim_nl(char *s) {
+	size_t n = strlen(s);
+	while (n && (s[n-1]=='\n' || s[n-1]=='\r')) s[--n] = '\0';
+}
+
+/* Write current timestamp "YYYY-MM-DD HH:MM:SS" into buf */
+static void current_timestamp(char *buf, size_t bufsz) {
+	time_t t = time(NULL);
+	struct tm tm;
+	localtime_r(&t, &tm);
+	strftime(buf, bufsz, "%Y-%m-%d %H:%M:%S", &tm);
+}
+
+/* Print usage */
+static void usage(const char *prog) {
+	fprintf(stderr,
+	"Usage:\n"
+	"  %s generate <keybase>\n"
+	"  %s write    <privkey> <logfile> <level> <message...>\n"
+	"  %s verify   <pubkey>  <logfile>\n",
+	prog, prog, prog);
+}
+
+/* Generate and save a keypair */
+static int do_generate(const char *base) {
+	// const ec_params *params = ec_maps[SECP256R1].params;
+	ec_params params;
+	import_params(&params, &secp256r1_str_params);
+	
+	ec_key_pair kp;
+	if (ec_key_pair_gen(&kp, &params, ECDSA) != 0) {
+		fprintf(stderr, "Error: key generation failed\n"); return -1;
+	}
+	
+	/* Export private key */
+	u8 priv_sz = EC_STRUCTURED_PRIV_KEY_EXPORT_SIZE(&kp.priv_key);
+	u8 *priv_buf = malloc(priv_sz);
+	ec_structured_priv_key_export_to_buf(&kp.priv_key, priv_buf, priv_sz);
+	
+	char fn[256];
+	snprintf(fn, sizeof(fn), "%s_priv.bin", base);
+	FILE *f = fopen(fn, "wb");
+	if (!f) { perror(fn); return -1; }
+	if (fwrite(priv_buf,1,priv_sz,f) != priv_sz) {
+		fprintf(stderr, "Error: writing %s\n", fn);
+		fclose(f); return -1;
+	}
+	fclose(f);
+	free(priv_buf);
+	
+	/* Export public key */
+	u8 pub_sz = EC_STRUCTURED_PUB_KEY_EXPORT_SIZE(&kp.pub_key);
+	u8 *pub_buf = malloc(pub_sz);
+	ec_structured_pub_key_export_to_buf(&kp.pub_key, pub_buf, pub_sz);
+	
+	snprintf(fn, sizeof(fn), "%s_pub.bin", base);
+	f = fopen(fn, "wb");
+	if (!f) { perror(fn); return -1; }
+	if (fwrite(pub_buf,1,pub_sz,f) != pub_sz) {
+		fprintf(stderr, "Error: writing %s\n", fn);
+		fclose(f); return -1;
+	}
+	fclose(f);
+	free(pub_buf);
+	
+	printf("Wrote %s_priv.bin and %s_pub.bin\n", base, base);
+	return 0;
+}
+
+/* Write a signed log entry */
+static int do_write(const char *privfile,
+const char *logfile,
+const char *level,
+const char *message)
+{
+	/* Load private key blob */
+	FILE *f = fopen(privfile, "rb");
+	if (!f) { perror(privfile); return -1; }
+	fseek(f,0,SEEK_END);
+	size_t sz = ftell(f);
+	fseek(f,0,SEEK_SET);
+	u8 *buf = malloc(sz);
+	if (fread(buf,1,sz,f) != sz) {
+		fprintf(stderr, "Error: reading %s\n", privfile);
+		fclose(f); free(buf); return -1;
+	}
+	fclose(f);
+	
+	ec_params params;
+	import_params(&params, &secp256r1_str_params);
+	ec_key_pair kp;
+	if (ec_structured_priv_key_import_from_buf(
+	&kp.priv_key, &params,
+	buf, (u8)sz, ECDSA) != 0)
+	{
+		fprintf(stderr, "Error: invalid private key\n");
+		free(buf); return -1;
+	}
+	free(buf);
+	
+	if (init_pubkey_from_privkey(&kp.pub_key, &kp.priv_key) != 0) {
+		fprintf(stderr, "Error: deriving public key\n"); return -1;
+	}
+	
+	/* Build entry content: timestamp|level|message */
+	char ts[20];
+	current_timestamp(ts, sizeof(ts));
+	size_t L = strlen(ts)+1+strlen(level)+1+strlen(message);
+	char *entry = malloc(L+1);
+	snprintf(entry, L+1, "%s|%s|%s", ts, level, message);
+	
+	/* Hash entry */
+	const hash_mapping *hm;
+	if (get_hash_by_type(SHA256, &hm) != 0) {
+		fprintf(stderr, "Error: SHA256 unavailable\n");
+		free(entry); return -1;
+	}
+	hash_context ctx;
+	hm->hfunc_init(&ctx);
+	hm->hfunc_update(&ctx, (u8*)entry, (u32)strlen(entry));
+	u8 digest[64], dlen = hm->digest_size;
+	hm->hfunc_finalize(&ctx, digest);
+	
+	/* Sign */
+	u8 siglen;
+	ec_get_sig_len(&params, ECDSA, SHA256, &siglen);
+	u8 *sigbin = malloc(siglen);
+	if (ec_sign(sigbin, siglen,
+	&kp, digest, dlen,
+	ECDSA, SHA256, NULL, 0) != 0)
+	{
+		fprintf(stderr, "Error: signing failed\n");
+		free(sigbin); free(entry); return -1;
+	}
+	char *hex = to_hex(sigbin, siglen);
+	free(sigbin);
+	
+	/* Append to log file */
+	FILE *logf = fopen(logfile, "a");
+	if (!logf) { perror(logfile); free(hex); free(entry); return -1; }
+	fprintf(logf, "%s|%s\n", entry, hex);
+	fclose(logf);
+	
+	printf("Appended log entry: [%s] %s\n", level, message);
+	free(hex);
+	free(entry);
+	return 0;
+}
+
+/* Verify all entries in a log file */
+static int do_verify(const char *pubfile, const char *logfile) {
+	/* Load public key blob */
+	FILE *f = fopen(pubfile, "rb");
+	if (!f) { perror(pubfile); return -1; }
+	fseek(f,0,SEEK_END);
+	size_t sz = ftell(f);
+	fseek(f,0,SEEK_SET);
+	u8 *buf = malloc(sz);
+	if (fread(buf,1,sz,f) != sz) {
+		fprintf(stderr, "Error: reading %s\n", pubfile);
+		fclose(f); free(buf); return -1;
+	}
+	fclose(f);
+	
+	ec_params params;
+	import_params(&params, &secp256r1_str_params);
+	ec_pub_key pub;
+	if (ec_structured_pub_key_import_from_buf(&pub, &params, buf, (u8)sz, ECDSA) != 0)
+	{
+		fprintf(stderr, "Error: invalid public key\n");
+		free(buf); return -1;
+	}
+	free(buf);
+	
+	/* Prepare for verification */
+	const hash_mapping *hm;
+	get_hash_by_type(SHA256, &hm);
+	
+	FILE *logf = fopen(logfile, "r");
+	if (!logf) { perror(logfile); return -1; }
+	
+	char *line = NULL;
+	size_t cap = 0;
+	ssize_t len;
+	int line_no = 0, bad = 0;
+	while ((len = getline(&line, &cap, logf)) > 0) {
+		line_no++;
+		trim_nl(line);
+		
+		/* Split into timestamp|level|message|hexsig */
+		char *ts  = strtok(line, "|");
+		char *lvl = strtok(NULL, "|");
+		char *msg = strtok(NULL, "|");
+		char *hex = strtok(NULL, "|");
+		if (!ts||!lvl||!msg||!hex) {
+			fprintf(stderr, "Format error on line %d\n", line_no);
+			bad++;
+			continue;
+		}
+		
+		/* Rebuild content to verify */
+		size_t L = strlen(ts)+1+strlen(lvl)+1+strlen(msg);
+		char *entry = malloc(L+1);
+		snprintf(entry, L+1, "%s|%s|%s", ts, lvl, msg);
+		
+		/* Hash */
+		hash_context ctx;
+		hm->hfunc_init(&ctx);
+		hm->hfunc_update(&ctx, (u8*)entry, (u32)strlen(entry));
+		u8 digest[64], dlen = hm->digest_size;
+		hm->hfunc_finalize(&ctx, digest);
+		
+		/* Decode hexsig */
+		size_t sl = strlen(hex)/2;
+		u8 *sigbin = malloc(sl);
+		for (size_t i = 0; i < sl; i++) {
+			sscanf(hex + 2*i, "%2hhx", &sigbin[i]);
+		}
+		
+		/* Verify */
+		int rc = ec_verify(sigbin, (u8)sl,
+		&pub, digest, dlen,
+		ECDSA, SHA256, NULL, 0);
+		if (rc != 0) {
+			printf("Line %d: INVALID signature\n", line_no);
+			bad++;
+		}
+		
+		free(entry);
+		free(sigbin);
+	}
+	free(line);
+	fclose(logf);
+	
+	if (bad == 0) {
+		printf("All entries verified successfully (%d lines).\n", line_no);
+		return 0;
+	} else {
+		printf("%d of %d entries FAILED verification.\n", bad, line_no);
+		return 1;
+	}
+}
+
+int main(int argc, char **argv) {
+	if (argc < 2) {
+		usage(argv[0]);
+		return 1;
+	}
+	if (!strcmp(argv[1], "generate") && argc == 3)
+	return do_generate(argv[2]) ? 1 : 0;
+	if (!strcmp(argv[1], "write") && argc >= 5) {
+		/* Join message args */
+		size_t mlen = 0;
+		for (int i = 4; i < argc; i++) mlen += strlen(argv[i]) + 1;
+		char *msg = malloc(mlen+1);
+		msg[0] = '\0';
+		for (int i = 4; i < argc; i++) {
+			strcat(msg, argv[i]);
+			if (i < argc-1) strcat(msg, " ");
+		}
+		int r = do_write(argv[2], argv[3], argv[4], msg);
+		free(msg);
+		return r ? 1 : 0;
+	}
+	if (!strcmp(argv[1], "verify") && argc == 4)
+	return do_verify(argv[2], argv[3]) ? 1 : 0;
+	
+	usage(argv[0]);
+	return 1;
+}
+\end{lstlisting}
+\begin{lstlisting}[numbers=none]
+gcc -std=c99 -Wall -Wextra -O2 -Iinclude -c src/logtool_ecc.c -o obj/logtool_ecc.o
+gcc -std=c99 -Wall -Wextra -O2 -Iinclude -o bin/logtool_ecc \
+	obj/logtool_ecc.o \
+		lib/libarith.a \
+		lib/libec.a \
+		lib/libsign.a
+\end{lstlisting}
+
+\newpage
+\subsection*{\texttt{logaggregator\_ecc.c}}
+\begin{lstlisting}[style=cstyle]
+/*
+* logaggregator_ecc.c
+*
+* Reads raw log lines from stdin, signs each line with real ECDSA (P-256),
+* and writes them into rotating chunk files.
+*
+* Usage:
+*   logaggregator_ecc <privkey_file> <chunk_dir> [lines_per_chunk]
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <stdint.h>
+#include <errno.h>
+
+#include <crypto/cryptosig.h>
+
+#define MAX_LINE    8192
+#define DEFAULT_LINES_PER_CHUNK 1000000
+
+/* Hex-encode */
+static char *to_hex(const uint8_t *buf, size_t len) {
+	static const char hex[] = "0123456789ABCDEF";
+	char *out = malloc(len*2 + 1);
+	for (size_t i = 0; i < len; i++) {
+		out[2*i]   = hex[buf[i] >> 4];
+		out[2*i+1] = hex[buf[i] & 0xF];
+	}
+	out[len*2] = '\0';
+	return out;
+}
+
+/* Trim newline */
+static void trim_nl(char *s) {
+	size_t n = strlen(s);
+	while (n && (s[n-1]=='\r' || s[n-1]=='\n')) s[--n]='\0';
+}
+
+int main(int argc, char **argv) {
+	if (argc < 3) {
+		fprintf(stderr, "Usage: %s <privkey> <chunk_dir> [lines_per_chunk]\n", argv[0]);
+		return 1;
+	}
+	const char *privfile = argv[1];
+	const char *chunkdir = argv[2];
+	long lines_per_chunk = DEFAULT_LINES_PER_CHUNK;
+	if (argc == 4) lines_per_chunk = atol(argv[3]);
+	
+	/* Load P-256 params */
+	// const ec_params *params = ec_maps[SECP256R1].params;
+	ec_params params;
+	import_params(&params, &secp256r1_str_params);
+	
+	/* Load private key blob */
+	FILE *kf = fopen(privfile, "rb");
+	if (!kf) { perror(privfile); return 1; }
+	fseek(kf, 0, SEEK_END);
+	size_t priv_sz = ftell(kf);
+	fseek(kf, 0, SEEK_SET);
+	uint8_t *priv_buf = malloc(priv_sz);
+	// fread(priv_buf,1,priv_sz,kf);
+	size_t got = fread(priv_buf, 1, priv_sz, kf);
+	if (got != priv_sz) {
+		if (feof(kf)) {
+			fprintf(stderr, "Error: unexpected EOF reading private key\n");
+			free(priv_buf);
+			fclose(kf);
+			return 1;
+		} else {
+			perror("fread");
+			free(priv_buf);
+		}
+		fclose(kf);
+		return -1;
+	}
+	fclose(kf);
+	
+	/* Import private key */
+	ec_key_pair kp;
+	if (ec_structured_priv_key_import_from_buf(
+		&kp.priv_key, &params, priv_buf, (u8)priv_sz, ECDSA) != 0)
+	{
+		fprintf(stderr, "Error: invalid private key\n");return 1;
+	}
+	free(priv_buf);
+	
+	/* Derive public key */
+	if (init_pubkey_from_privkey(&kp.pub_key, &kp.priv_key) != 0) {
+		fprintf(stderr, "Error: deriving public key\n");
+		return 1;
+	}
+	
+	/* Prepare chunk files */
+	if (mkdir(chunkdir, 0755) && errno!=EEXIST) {
+		perror("mkdir chunk_dir"); return 1;
+	}
+	char fname[512];
+	int chunk_seq = 1;
+	snprintf(fname, sizeof(fname), "%s/chunk_%04d.log", chunkdir, chunk_seq);
+	FILE *out = fopen(fname, "w");
+	if (!out) { perror(fname); return 1; }
+	fprintf(stderr, "Writing to %s\n", fname);
+	
+	/* Setup hash algorithm */
+	const hash_mapping *hm;
+	if (get_hash_by_type(SHA256, &hm) != 0) {
+		fprintf(stderr, "Error: SHA256 not available\n"); return 1;
+	}
+	
+	/* Process lines */
+	char *line = NULL;
+	size_t cap = 0;
+	ssize_t len;
+	long count = 0;
+	while ((len = getline(&line, &cap, stdin)) > 0) {
+		trim_nl(line);
+		/* Hash the line */
+		hash_context ctx;
+		hm->hfunc_init(&ctx);
+		hm->hfunc_update(&ctx, (uint8_t*)line, (u32)strlen(line));
+		uint8_t digest[64];
+		uint8_t dlen = hm->digest_size;
+		hm->hfunc_finalize(&ctx, digest);
+		
+		/* Sign */
+		u8 siglen;
+		ec_get_sig_len(&params, ECDSA, SHA256, &siglen);
+		uint8_t *sigbin = malloc(siglen);
+		if (ec_sign(sigbin, siglen,
+		&kp, digest, dlen,
+		ECDSA, SHA256, NULL, 0) != 0)
+		{
+			fprintf(stderr, "Error: signing failed\n");
+			free(sigbin);
+			break;
+		}
+		char *hex = to_hex(sigbin, siglen);
+		free(sigbin);
+		
+		/* Write signed line */
+		fprintf(out, "%s|%s\n", line, hex);
+		fflush(out);
+		free(hex);
+		
+		if (++count >= lines_per_chunk) {
+			fclose(out);
+			count = 0;
+			chunk_seq++;
+			snprintf(fname, sizeof(fname), "%s/chunk_%04d.log", chunkdir, chunk_seq);
+			out = fopen(fname, "w");
+			if (!out) { perror(fname); break; }
+			fprintf(stderr, "Writing to %s\n", fname);
+		}
+	}
+	free(line);
+	fclose(out);
+	fprintf(stderr, "Done: %d chunk(s)\n", chunk_seq);
+	return 0;
+}
+\end{lstlisting}
+\begin{lstlisting}[numbers=none]
+gcc -std=c99 -Wall -Wextra -O2 -Iinclude -c src/logaggregator_ecc.c -o obj/logaggregator_ecc.o
+gcc -std=c99 -Wall -Wextra -O2 -Iinclude -o bin/logaggregator_ecc \
+	obj/logaggregator_ecc.o \
+		lib/libarith.a \
+		lib/libec.a \
+		lib/libsign.a
+\end{lstlisting}
+\newpage
+\subsection*{\texttt{generate\_logs.py}}
+\begin{lstlisting}[style=py]
+"""
+generate_logs.py
+
+Generate a large synthetic log file with timestamp|level|message entries.
+Usage:
+python3 generate_logs.py --lines 10000 --outfile app.log
+"""
+
+import argparse
+import random
+from datetime import datetime
+
+LEVELS = ['INFO', 'WARN', 'ERROR', 'DEBUG']
+MESSAGES = [
+	'User login successful',
+	'File processed',
+	'Connection timeout',
+	'Data saved to DB',
+	'Error reading configuration',
+	'Heartbeat',
+	'Cache miss',
+	'Session expired'
+]
+
+def main():
+	p = argparse.ArgumentParser(description="Generate synthetic log lines")
+	p.add_argument('--lines',   type=int,   default=1_000_000, help='Number of lines to generate')
+	p.add_argument('--outfile', type=str,   default='app.log', help='Output log filename')
+	args = p.parse_args()
+	
+	with open(args.outfile, 'w') as f:
+		for i in range(args.lines):
+			ts    = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+			level = random.choice(LEVELS)
+			msg   = random.choice(MESSAGES)
+			f.write(f'{ts}|{level}|{msg}\n')
+	
+	print(f"Generated {args.lines} lines in '{args.outfile}'")
+
+if __name__ == '__main__':
+	main()
+
+\end{lstlisting}
+\begin{lstlisting}[numbers=none]
+python3 generate_logs.py --lines 10000 --outfile app.log
+\end{lstlisting}
+
+\newpage
+\section{Example Scenario with \texttt{logtool\_ecc}}
+\begin{lstlisting}[numbers=none]
+	content...
+\end{lstlisting}
+
+\section{Example Scenario with \texttt{logaggregator\_ecc}}
+\begin{lstlisting}[numbers=none]
+	content...
+\end{lstlisting}
+
+
+%\section{Architectural Overview for Verifiable Logging}
+%The architecture is based on the Unix philosophy of "do one thing and do it well." Instead of a single monolithic application, the framework is split into two components that can be composed using standard shell pipes.
+%\begin{enumerate}
+%	\item \textbf{\texttt{logtool}:} A simple utility for generating a single, properly formatted, and digitally signed log line. It is intended for applications that need to generate secure log entries sporadically.
+%	\item \textbf{\texttt{logaggregator}:} A high-performance stream processor. It reads raw, unsigned log lines from standard input, signs each one in real-time, and writes the resulting signed log lines to standard output. This makes it a perfect filter component in a larger data pipeline.
+%\end{enumerate}
+%This decoupled design allows for maximum flexibility. An application can either use \texttt{logtool} directly to write to a log file, or it can send its raw log output to \texttt{logaggregator} for centralized signing before ingestion into a log management system like Fluentd or Logstash.
+%
+%\begin{figure}[h!]
+%	\centering
+%	\begin{tikzpicture}[
+%		node distance=2cm and 2.5cm,
+%		app/.style={rectangle, draw, thick, rounded corners=3pt, fill=blue!10, minimum height=1.5cm, minimum width=3cm, text centered, font=\sffamily},
+%		data/.style={cylinder, shape border rotate=90, draw, fill=orange!10, minimum height=1.5cm, text width=2.5cm, align=center},
+%		arrow/.style={-Latex, thick}
+%		]
+%		% Nodes
+%		\node[app] (app1) {Application A};
+%		\node[app] (app2) [below=of app1] {Application B};
+%		\node[app, text width=4cm] (agg) [right=of app2] {\texttt{logaggregator}\\(Stream Signing)};
+%		\node[data] (collector) [right=of agg] {Central Log Collector (e.g., Logstash)};
+%		
+%		% Arrows
+%		\draw[arrow] (app1.east) -- node[above, font=\small] {raw logs} (agg.west |- app1.east);
+%		\draw[arrow] (app2.east) -- node[above, font=\small] {raw logs} (agg.west);
+%		\draw[arrow] (agg.east) -- node[above, font=\small] {signed logs} (collector.west);
+%	\end{tikzpicture}
+%	\caption{Architectural workflow showing multiple applications piping raw log data to \texttt{logaggregator} for real-time signing before collection.}
+%	\label{fig:log_arch}
+%\end{figure}
+%
+%\section{Component 1: The \texttt{logtool} Utility}
+%The \texttt{logtool} application is a general-purpose utility for writing individual, signed log entries to a specified file.
+%
+%\section{Functionality: Creating Signed Log Entries}
+%\texttt{logtool} takes a private key, a log file path, a severity level (e.g., "INFO", "WARN", "ERROR"), and a message as command-line arguments. It automatically generates a current timestamp, constructs a canonical log entry, signs it, and appends the final signed record to the log file.
+%
+%\section{Log Entry Structure}
+%To ensure consistent and verifiable signatures, every log entry must follow a strict, canonical format. The tool constructs the portion of the message to be signed by concatenating the timestamp, level, and message, separated by pipe characters (`|`). The final output line includes this content followed by the hex-encoded signature components, also pipe-separated.
+%
+%\begin{lstlisting}[caption={Canonical format of a signed log entry.}]
+%	YYYY-MM-DD HH:MM:SS|LEVEL|Log message content here|<r-value>|<s>
+%\end{lstlisting}
+%An example of a real log entry would be:
+%\begin{lstlisting}[]
+%	2025-06-10 22:38:00|ERROR|Database connection failed: timeout|34a1...|b1c3...
+%\end{lstlisting}
+%When verifying an entry, a tool must reconstruct the exact string `YYYY-MM-DD HH:MM:SS|LEVEL|Log message content here` to re-compute the hash for verification.
+%
+%\section{Component 2: The \texttt{logaggregator} Service}
+%The \texttt{logaggregator} is the high-throughput counterpart to \texttt{logtool}. It is designed to act as a filter in a continuous data pipeline.
+%
+%\section{Functionality: Real-time Signing of Log Streams}
+%The aggregator reads raw, newline-terminated log lines from its standard input. For each line, it performs the following steps:
+%\begin{enumerate}
+%	\item Computes the SHA-256 hash of the line content.
+%	\item Signs the resulting hash using the provided private key.
+%	\item Prints the original line, followed by the hex-encoded signature components, to its standard output.
+%\end{enumerate}
+%This allows it to be placed seamlessly in a pipeline, for example:
+%\begin{lstlisting}[language=bash]
+%	$ ./my_application | ./logaggregator --key my_key.pem > /var/log/secure_app.log
+%\end{lstlisting}
+%
+%\section{Log Chunking and Rotation Strategy}
+%To manage potentially massive log volumes, \texttt{logaggregator} includes a built-in mechanism for log rotation. A user can specify a `--lines-per-chunk` argument. Once the specified number of lines has been written to the current output file, the file is closed, and a new one is created with an incremented sequence number (e.g., `chunk\_0001.log`, `chunk\_0002.log`, etc.). This strategy prevents individual log files from becoming unmanageably large and simplifies log management tasks such as archiving, deletion, and parallel processing.
+%
+%\section{Use Case: Securing a Distributed Data Ingestion Pipeline}
+%Consider a scenario with multiple web servers, each generating access logs. To ensure the integrity of these logs before they are analyzed, the following pipeline can be established:
+%\begin{enumerate}
+%	\item Each web server is configured to write its access logs to a local named pipe instead of a standard file.
+%	\item A \texttt{logaggregator} process on each server reads from this named pipe. Using a unique private key for that server, it signs every log entry in real-time.
+%	\item The signed output from the aggregator is then forwarded by a standard log shipper (like Fluent-bit) to a central Kafka or Logstash cluster.
+%\end{enumerate}
+%This architecture provides strong, end-to-end integrity guarantees. An auditor or analyst can later verify the signatures of the logs in the central repository, confirming that they have not been altered since they were generated on the source web server. The use of a distinct private key per server also provides non-repudiation, proving which server originated each log entry.

@@ -1,0 +1,8 @@
+===========================================================
+ar t foo.a                # list members
+ar x foo.a [member.o]     # extract one/all members
+nm -g foo.a               # list global symbols
+readelf -s foo.a          # detailed symbol tables
+objdump -d foo.a          # disassemble code
+strings foo.a             # printable strings
+===========================================================

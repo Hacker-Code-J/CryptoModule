@@ -53,15 +53,6 @@ typedef struct {
 } ec_mapping;
 
 static const ec_mapping ec_maps[] = {
-#ifdef CURVE_FRP256V1
-	{.type = FRP256V1,.params = &frp256v1_str_params},
-#endif /* CURVE_FRP256V1 */
-#ifdef CURVE_SECP192R1
-	{.type = SECP192R1,.params = &secp192r1_str_params},
-#endif /* CURVE_SECP192R1 */
-#ifdef CURVE_SECP224R1
-	{.type = SECP224R1,.params = &secp224r1_str_params},
-#endif /* CURVE_SECP224R1 */
 #ifdef CURVE_SECP256R1
 	{.type = SECP256R1,.params = &secp256r1_str_params},
 #endif /* CURVE_SECP256R1 */

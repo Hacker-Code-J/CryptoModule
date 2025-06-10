@@ -1,0 +1,58 @@
+\begin{figure}[h!]
+	\centering
+	\begin{tikzpicture}[
+		% Define styles for the nodes and layers
+		layer_box/.style={
+			rectangle, 
+			draw, 
+			thick, 
+			fill=blue!5, 
+			text width=0.95\textwidth, 
+			minimum height=3.5cm, 
+			align=left,
+			rounded corners=5pt,
+			drop shadow={opacity=0.5}
+		},
+		app_node/.style={
+			rectangle, 
+			draw, 
+			thick,
+			fill=green!15, 
+			text centered,
+			font=\sffamily,
+			minimum height=1cm,
+			rounded corners=3pt
+		},
+		data_node/.style={
+			trapezium, 
+			trapezium left angle=70, 
+			trapezium right angle=110,
+			draw, 
+			thick,
+			fill=orange!20,
+			text centered,
+			font=\sffamily,
+			minimum height=1cm,
+			drop shadow
+		},
+		arrow_style/.style={
+			-latex, 
+			thick,
+			draw=black!70
+		},
+		]
+		
+		% ----- Nodes -----
+		% Define the three main layers
+		\node[layer_box] (crypto_layer) at (0, -9) {};
+		\node[] at (-4.6, -7) {\textbf{Cryptographic Primitives Layer}};
+		
+		% Components for the Cryptographic Primitives Layer
+		\node[app_node, fill=blue!20, text width=10cm, align=center] (libecc) at (0, -9) {\textbf{Core Library}\\ (\texttt{libarith.a}, \texttt{libec.a}, \texttt{libsig.a})};
+		%		\node[font=\sffamily\small] at (0, -9.25) {};
+
+			
+	\end{tikzpicture}
+	\caption{\textbf{Cryptographic Primitive Layer.}\; This is a low-level cryptographic operations includes three libraries: \texttt{libarith.a}, \texttt{libec.a}, \texttt{libsig.a}.}
+	\label{fig:architecture}
+\end{figure}

@@ -1,0 +1,72 @@
+\chapter{Background and Preliminaries}
+
+\section{Fundamentals of Public Key Cryptography}
+
+Public key cryptography relies on mathematical problems that are easy to compute in one direction but hard to invert without special knowledge (the private key). Common primitives include RSA, Diffie–Hellman, and elliptic‐curve based schemes.
+
+\section{Elliptic Curve Cryptography (ECC)}
+
+An elliptic curve over a finite field \(\mathbb{F}_p\) is defined by the Weierstrass equation:
+
+\[
+y^2 \equiv x^3 + a x + b \pmod{p}
+\]
+
+where \(a, b \in \mathbb{F}_p\) and the discriminant condition
+
+\[
+4a^3 + 27b^2 \not\equiv 0 \pmod{p}
+\]
+
+ensures no singularities.
+
+\section{The Elliptic Curve Digital Signature Algorithm (ECDSA)}
+
+\subsection{Key Generation}
+
+A private key \(d\) is a randomly selected integer in \(\,[1, n-1]\), where \(n\) is the order of the generator point \(G\).  
+The public key \(Q\) is computed as
+
+\[
+Q = d\,G.
+\]
+
+\subsection{Signature Generation}
+
+To sign a message hash \(e = H(m)\):
+
+\begin{enumerate}
+	\item Select a random integer \(k \in [1, n-1]\).
+	\item Compute the point \((x_1, y_1) = k\,G\).
+	\item Compute \(r = x_1 \bmod n\). If \(r = 0\), restart with a new \(k\).
+	\item Compute \(s = k^{-1}(e + r\,d) \bmod n\). If \(s = 0\), restart with a new \(k\).
+\end{enumerate}
+
+The signature is the pair \((r, s)\).
+
+\subsection{Signature Verification}
+
+To verify a signature \((r, s)\) on a message hash \(e\):
+
+\begin{enumerate}
+	\item Verify that \(r, s \in [1, n-1]\).
+	\item Compute \(w = s^{-1} \bmod n\).
+	\item Compute 
+	\[
+	u_1 = e\,w \bmod n,\qquad
+	u_2 = r\,w \bmod n.
+	\]
+	\item Compute the point \((x_0, y_0) = u_1\,G + u_2\,Q\).
+	\item The signature is valid if 
+	\[
+	x_0 \bmod n \;\equiv\; r.
+	\]
+\end{enumerate}
+
+\section{Hash Functions and their Role in Digital Signatures}
+
+Hash functions (e.g., SHA-256) produce fixed-size digests of arbitrary-length messages, ensuring both integrity and efficiency when signing large data by signing the digest instead of the full message.
+
+\section{\texttt{libecc} Cryptographic Library: An Overview}
+
+The \texttt{libecc} library provides optimized implementations of elliptic-curve primitives, including domain parameter management, key generation, signature algorithms, and secure random number generation, all conforming to industry standards like FIPS 186-5.

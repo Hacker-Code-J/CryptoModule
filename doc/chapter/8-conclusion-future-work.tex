@@ -1,0 +1,34 @@
+% CHAPTER 8
+\chapter{Conclusion and Future Work}
+This project set out to bridge the gap between the theoretical power of modern cryptography and its practical application in big data systems. This concluding chapter summarizes the results of this effort, candidly discusses its limitations, and proposes concrete directions for future enhancements.
+
+\section{Summary of Results}
+This project successfully demonstrates the design and implementation of a practical and performant framework for ensuring data integrity in big data pipelines. The two developed applications, \texttt{filecheck\_secure} and the secure logging suite, provide essential security services for both batch and streaming data workflows. By leveraging the standard, well-vetted cryptographic primitives in \texttt{libecc}, the framework achieves strong, provable guarantees of data authenticity, integrity, and non-repudiation.
+
+The key outcomes of this work are:
+\begin{itemize}
+	\item \textbf{A validated approach for file-based integrity}, showing that large, multi-gigabyte files can be efficiently signed and verified with a minimal and constant memory footprint.
+	\item \textbf{A viable architecture for real-time, verifiable logging}, where the performance benchmarks confirm that the cryptographic overhead (\textasciitilde 0.25 ms per entry) is negligible for high-throughput stream processing.
+	\item \textbf{A practical toolkit for data engineers}, offering simple, scriptable command-line utilities that lower the barrier to adopting strong cryptographic practices in day-to-day operations.
+\end{itemize}
+Ultimately, this project provides a concrete blueprint for how modern elliptic curve cryptography can be effectively integrated into data-intensive environments without requiring prohibitive performance trade-offs or specialized expertise from end-users.
+
+\section{Limitations}
+While the project achieved its primary objectives, it is important to acknowledge its limitations in the context of a hardened, production-grade deployment:
+\begin{itemize}
+\item \textbf{Key Management}: The most significant limitation is the reliance on filesystem-based storage for private keys. While protected by file permissions, this approach does not defend against sophisticated attackers who gain root access to a machine.
+\item \textbf{Reliance on External Randomness:} The security of ECDSA is critically dependent on a high-quality source of randomness for generating per-signature nonces. The current implementation implicitly trusts the underlying operating system's random number generator (e.g., \texttt{/dev/urandom}), which, while generally reliable, may not meet the stringent requirements of all security policies.
+\item \textbf{No Explicit Side-Channel Resistance:} The \texttt{libecc} library is not specifically designed to include constant-time algorithms or other countermeasures against side-channel attacks. This represents a potential, albeit advanced, threat vector in multi-tenant or physically insecure environments.
+\end{itemize}
+	
+\section{Future Enhancements}
+The current framework serves as a robust foundation for several promising future enhancements that would elevate it to a production-ready, enterprise-grade security solution.
+
+\section{Hardware Security Module (HSM) Integration}
+The most critical future enhancement is to abstract the private key operations and integrate support for Hardware Security Modules. An HSM is a physical device that safeguards and manages digital keys and performs cryptographic operations. By integrating HSM support (e.g., via the PKCS\#11 standard), the private key would never be exposed in software, system memory, or on disk. All signing operations would be offloaded to the tamper-resistant hardware, providing the highest possible level of key security and addressing the primary limitation of the current system.
+
+\section{Support for Additional Curves (e.g., Curve25519)}
+The framework could be extended to support other modern elliptic curves, particularly Curve25519 as used in the Edwards-curve Digital Signature Algorithm (EdDSA). EdDSA offers several advantages over ECDSA, including higher performance and intrinsic resistance to certain classes of implementation errors, such as the danger of a faulty random number generator for nonces. Expanding the framework to support EdDSA would provide users with more flexibility and an even stronger security posture.
+
+\section{Formal Verification of Log Integrity}
+For the secure logging suite, a dedicated verification tool could be developed to perform a formal audit of an entire chain of log files. This tool would go beyond verifying individual signatures. It would process a sequence of log chunks (e.g., \texttt{chunk\_0001.log}, \texttt{chunk\_0002.log}, etc.) and verify not only every signature within them but also the integrity of the sequence itself by checking for contiguous, non-repeating timestamps or explicit sequence numbers. This would create a complete, provable audit trail, making it possible to mathematically prove that no log entries were deleted, inserted, or reordered after the fact.

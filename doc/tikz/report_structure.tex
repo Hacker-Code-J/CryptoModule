@@ -1,0 +1,64 @@
+\begin{figure}[h!]
+	\centering
+	\begin{adjustbox}{max width=\textwidth}
+		\begin{forest}
+			% Define styles for the tree
+			for tree={
+				draw,
+				thick,
+				rounded corners=3pt,
+				font=\sffamily,
+				edge={-Latex, thick},
+				grow=east,         % Grow from left to right
+				l sep=15mm,         % vertical separation between siblings
+				s sep=5mm,          % horizontal separation between parent/child
+				anchor=west,
+				child anchor=west,
+				align=center        % Center text in nodes
+			}
+			% Style for the root node
+			[The Big Data Processing using ECC, fill=blue!20, font=\sffamily\bfseries
+			% Level 1 Nodes (Chapters) - REORDERED TO RENDER CORRECTLY
+			[Appendices \& References, fill=gray!20]
+			[Chapter 8. Conclusion, fill=red!20
+			[Summary of Results]
+			[Limitations]
+			[Future Work]
+			]
+			[Chapter 7. Analysis, fill=cyan!20
+			[Performance Benchmarks]
+			[Security Considerations]
+			]
+			[Chapter 6. Developer's Guide, fill=cyan!20
+			[API Data Structures]
+			[API Function Reference]
+			[Sample Code]
+			]
+			[Chapter 5. Application 2: Secure Logging Suite, fill=purple!20
+			[\texttt{logtool} Utility]
+			[\texttt{logaggregator} Service]
+			]
+			[Chapter 4. Application 1: \texttt{filecheck\_secure}, fill=purple!20
+			[Functional Modes]
+			[Implementation Details]
+			]
+			[Chapter 3. Architecture, fill=orange!20
+			[Core Components]
+			[Design Goals]
+			[Crypto Parameters]
+			]
+			[Chapter 2. Background, fill=orange!20
+			[PKC \& ECC]
+			[ECDSA \& Hashes]
+			[\texttt{libecc} Overview]
+			]
+			[Chapter 1. Introduction, fill=green!20
+			[Motivation \& Problem]
+			[Scope \& Contributions]
+			]
+			]
+		\end{forest}
+	\end{adjustbox}
+	\caption{A hierarchical overview of the structure of document.}
+	\label{fig:report_structure_full}
+\end{figure}

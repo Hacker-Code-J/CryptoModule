@@ -42,26 +42,16 @@
  */
 
 /* Supported hash algorithms */
-#define HASH_SHA224
 #define HASH_SHA256
-#define HASH_SHA384
-#define HASH_SHA512
-#define HASH_SHA512_224
-#define HASH_SHA512_256
-#define HASH_SHA3_224
 #define HASH_SHA3_256
-#define HASH_SHA3_384
-#define HASH_SHA3_512
 #define HASH_SHAKE256
 #define HMAC
 
 /* Supported sig/verif schemes */
 #define SIG_ECDSA
-#define SIG_ECKCDSA
 
 // /* Supported ECDH schemes */
 // #define ECCCDH
 // #define X25519
-// #define X448
 
 #endif /* __CRYPTO_ECC_CONFIG_H__ */

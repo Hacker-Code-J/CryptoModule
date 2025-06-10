@@ -1,0 +1,178 @@
+%-------------------------
+% Listing Settings
+%-------------------------
+\usepackage{listings}
+\lstset{
+	basicstyle=\footnotesize\ttfamily,
+	breaklines=true,
+	frame=single,
+	columns=fullflexible,
+	captionpos=b,
+	postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space}, % Line wrap indicator
+	numbers=left
+}
+%\lstdefinestyle{cstyle}{
+%	language=C,
+%	tabsize=3,
+%	basicstyle=\small\ttfamily,
+%	keywordstyle=\bfseries\color{blue},
+%	morekeywords={printf, scanf, main, size_t, uint8_t, uint16_t, uint32_t, uint64_t, u8, u32, u64, u128, i32, i64, i128},
+%	commentstyle=\itshape\color{teal!70!black},
+%	stringstyle=\color{orange!90!black},
+%	numbers=left,
+%	numbersep=5pt,
+%	numberstyle=\tiny\color{gray},
+%	columns=fullflexible,
+%	showstringspaces=false,
+%	breaklines=true,
+%	breakatwhitespace=true,
+%	escapeinside={(*@}{@*)},
+%	postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+%	frame=single
+%}
+% Define a professional color scheme
+\definecolor{solarized-base03}{HTML}{002B36}
+\definecolor{solarized-base01}{HTML}{586E75}
+\definecolor{solarized-base1}{HTML}{93A1A1}
+\definecolor{solarized-yellow}{HTML}{B58900}
+\definecolor{solarized-orange}{HTML}{CB4B16}
+\definecolor{solarized-red}{HTML}{DC322F}
+\definecolor{solarized-magenta}{HTML}{D33682}
+\definecolor{solarized-violet}{HTML}{6C71C4}
+\definecolor{solarized-blue}{HTML}{268BD2}
+\definecolor{solarized-cyan}{HTML}{2AA198}
+\definecolor{solarized-green}{HTML}{859900}
+\definecolor{backcolour}{HTML}{FDF6E3} % A very light background
+
+\lstdefinestyle{cstyle}{
+    language=C,
+%	backgroundcolor=\color{backcolour},
+	tabsize=4,
+	basicstyle=\small\ttfamily,
+	commentstyle=\itshape\color{solarized-green},
+	stringstyle=\color{solarized-green},
+	directivestyle=\bfseries\color{solarized-magenta},   % Style for #include, #define, etc.
+	% Keyword group 1: Standard C Keywords
+	keywordstyle=\bfseries\color{solarized-blue},
+	% Keyword group 2: Common types and custom structs from libecc
+	morekeywords={
+		u8, u16, u32, u64, i32, i64,
+		uint8_t, uint16_t, uint32_t, uint64_t, size_t,
+	},
+	keywordstyle=[2]\bfseries\color{solarized-cyan},
+	% Keyword group 3: Common library functions
+	morekeywords=[2]{
+		ec_key_pair, ec_pub_key, hash_context, hash_mapping, ec_alg_type, ec_curve_type,
+		word_t, nn_t, nn_src_t, FILE, _hfunc_init, _hfunc_update, _hfunc_finalize, _hfunc_scattered,
+		fp_t, fp_src_t, ec_shortw_crv, ec_shortw_crv_t, ec_shortw_crv_src_t,
+		prj_pt, prj_pt_t, prj_pt_src_t
+	},
+	keywordstyle=[3]\color{solarized-red},
+	morekeywords=[3]{
+		printf, scanf, main, fopen, fclose, fprintf, snprintf, sscanf, strcmp, strlen,
+	},
+	keywordstyle=[4]\color{orange},
+	morekeywords=[4]{
+		nn, fp, ec_sign_context, ecdsa_sign_data, ecdsa_verify_data
+	},
+	keywordstyle=[5]\color{solarized-yellow},
+	morekeywords=[5]{
+		ec_key_pair_gen, get_hash_by_type,
+		ec_sign_hash, ec_verify_hash, nn_init, nn_copy, nn_cmp,
+		ec_key_pair_import_priv_key, ec_key_pair_import_pub_key, 
+		ec_key_pair_export_priv_key, ec_key_pair_export_pub_key
+	},
+	keywordstyle=[6]\color{red},
+	morekeywords=[6]{
+		prj_pt_sensitivity,
+	},
+	numbers=left,
+	numbersep=10pt,
+	numberstyle=\tiny\color{solarized-base01},
+	columns=fullflexible,
+	showstringspaces=false,
+	breaklines=true,
+	breakatwhitespace=true,
+	escapeinside={(*@}{@*)},                           % To escape to LaTeX within code
+	postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space}, % Line wrap indicator
+	frame=tb,                                          % Top and bottom frame lines
+	framerule=0.5pt,
+	rulecolor=\color{solarized-base03}
+%	language=C,
+%	backgroundcolor=\color{backcolour},
+%	tabsize=4,
+%	basicstyle=\small\ttfamily,
+%	keywordstyle=\bfseries\color{solarized-blue},      % Standard C keywords (if, else, for...)
+%	morekeywords={                                     % Custom types and important structs
+%		u8, u16, u32, u64, i32, i64,
+%		uint8_t, uint16_t, uint32_t, uint64_t, size_t,
+%		ec_key_pair, ec_pub_key, hash_context, hash_mapping, ec_alg_type, ec_curve_type
+%	},
+%	keywordstyle=[2]\bfseries\color{solarized-cyan},     % Style for 'morekeywords'
+%	otherkeywords={printf, scanf, main, fopen, fclose, fprintf, snprintf, sscanf, strcmp, strlen}, % Common functions
+%	keywordstyle=[3]\color{solarized-violet},           % Style for 'otherkeywords'
+%	commentstyle=\itshape\color{solarized-base01},
+%	stringstyle=\color{solarized-green},
+%	numbers=left,
+%	numbersep=10pt,
+%	numberstyle=\tiny\color{solarized-base01},
+%	columns=fullflexible,
+%	showstringspaces=false,
+%	breaklines=true,
+%	breakatwhitespace=true,
+%	escapeinside={(*@}{@*)},                           % To escape to LaTeX within code
+%%	postbreak=\mbox{\color{solarized-red}$\hookrightarrow$ \space}, % Line wrap indicator
+%%	frame=tb,                                          % Top and bottom frame lines
+%%	framerule=0.5pt,
+%%	rulecolor=\color{solarized-base03}
+}
+
+\lstdefinestyle{py}{
+	language=Python,
+%	backgroundcolor=\color{backcolour},
+	tabsize=4,
+	basicstyle=\small\ttfamily,
+	% Keyword group 1: Standard Python Keywords
+	keywordstyle=\bfseries\color{solarized-blue},
+	% Keyword group 2: Built-in Functions & Types
+	morekeywords=[2]{
+		print, len, range, dict, list, str, int, float, bool, set, tuple,
+		open, file, super, self, True, False, None
+	},
+	keywordstyle=[2]\color{solarized-violet},
+	% Keyword group 3: Decorators and Class definition
+	morekeywords=[3]{
+		@, class
+	},
+	keywordstyle=[3]\bfseries\color{solarized-cyan},
+	% Keyword group 4: Special "dunder" methods
+	morekeywords=[4]{
+		__init__, __str__, __repr__, __len__, __getitem__, __setitem__,
+		__add__, __sub__, __mul__, __div__, __call__, __enter__, __exit__
+	},
+	keywordstyle=[4]\color{solarized-orange},
+	% Comment and String Styles
+	commentstyle=\itshape\color{solarized-base01},
+	stringstyle=\color{solarized-green},
+	% Docstring style (triple-quoted strings)
+	morestring=[b][\color{solarized-base01}\itshape]{"""},
+	morestring=[b][\color{solarized-base01}\itshape]{'''},
+	% Numbers, Frame, and Layout
+	numbers=left,
+	numbersep=10pt,
+	numberstyle=\tiny\color{solarized-base01},
+	columns=fullflexible,
+	showstringspaces=false,
+	breaklines=true,
+	breakatwhitespace=true,
+	escapeinside={(*@}{@*)},                           % To escape to LaTeX within code
+	postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space}, % Line wrap indicator
+	frame=tb,                                          % Top and bottom frame lines
+	framerule=0.5pt,
+	frameround=tttt,
+	rulecolor=\color{solarized-base03}
+}
+
+
+
+\renewcommand{\lstlistingname}{Code}

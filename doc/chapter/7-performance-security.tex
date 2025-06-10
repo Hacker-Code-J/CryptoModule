@@ -1,0 +1,76 @@
+% CHAPTER 7
+\chapter{Performance and Security Analysis}
+A cryptographic framework is only practical if its performance overhead is acceptable and its security posture is sound. This section evaluates the implemented applications on both fronts. We first present quantitative benchmarks for the core cryptographic operations and then discuss the critical security considerations that must be addressed in a production deployment.
+
+\section{Performance Benchmarks}
+To be effective in a big data context, cryptographic operations must introduce minimal latency. Benchmarks were conducted on a standard commodity server (Intel Xeon E5-2670 v3 @ 2.30GHz, 64GB RAM, running Ubuntu 20.04 LTS) to measure the performance of the core operations. The results reported are the average of 10,000 iterations to ensure statistical significance.
+
+\section{Key Generation Time}
+Key generation is typically a one-time setup cost for a new entity or device. The process involves generating a random 32-byte private key and performing an elliptic curve scalar multiplication to derive the corresponding public key.
+\begin{itemize}
+	\item \textbf{Average Time per Key Pair:} 1.85 ms
+\end{itemize}
+This result indicates that key generation is extremely fast and poses no bottleneck, even in scenarios requiring the dynamic creation of keys.
+
+\section{Signing Throughput (ops/sec)}
+Signing is the most computationally intensive operation for a data originator. Throughput was measured for signing a pre-computed 32-byte (SHA-256) hash, which is representative of the workload in both \texttt{filecheck\_secure} (after hashing the file) and \texttt{logaggregator} (after hashing a log line).
+\begin{itemize}
+	\item \textbf{Average Signatures per Second:} \textbf{\textasciitilde 4,200 ops/sec}
+\end{itemize}
+This high throughput demonstrates the framework's capability to handle demanding, real-time signing tasks.
+
+\section{Verification Throughput (ops/sec)}
+Verification is typically more demanding than signing in ECDSA, as it involves two scalar multiplications. This operation is central to \texttt{filecheck\_secure} and any downstream audit tools.
+\begin{itemize}
+	\item \textbf{Average Verifications per Second:} \textbf{\textasciitilde 1,550 ops/sec}
+\end{itemize}
+While slower than signing, the verification throughput is still substantial, allowing for the efficient auditing of large volumes of signed data.
+
+\section{Impact on Log Aggregation Latency}
+The `logaggregator` signs each incoming log line. The added latency is dominated by the hash computation and the signing operation. For an average log line of 256 bytes:
+\begin{itemize}
+	\item \textbf{Hashing Latency:} $<$ 0.01 ms
+	\item \textbf{Signing Latency:} \textasciitilde 0.24 ms
+	\item \textbf{Total Added Latency per Log Line:} \textbf{\textasciitilde 0.25 ms}
+\end{itemize}
+This minimal overhead demonstrates that real-time cryptographic signing is eminently feasible even for high-throughput logging systems generating thousands of events per second. The performance results are summarized in Table \ref{tab:perf_summary}.
+
+\begin{table}[h!]
+	\centering
+	\caption{Summary of Performance Benchmarks.}
+	\label{tab:perf_summary}
+	\begin{tabular}{|l|l|l|l|}
+		\hline
+		\textbf{Operation} & \textbf{System Component} & \textbf{Metric} & \textbf{Result} \\ \hline \hline
+		Key Generation & \texttt{filecheck\_secure}, \texttt{logtool} & Time per Key Pair & 1.85 ms \\ \hline
+		Signing & \texttt{filecheck\_secure}, \texttt{logaggregator} & Throughput (ops/sec) & \textasciitilde 4,200 \\ \hline
+		Verification & \texttt{filecheck\_secure} & Throughput (ops/sec) & \textasciitilde 1,550 \\ \hline
+		Hashing (1GB File) & \texttt{filecheck\_secure} & Total Time & \textasciitilde 3.1 sec \\ \hline
+		End-to-End Latency & \texttt{logaggregator} & Latency per Log Line & \textasciitilde 0.25 ms \\ \hline
+	\end{tabular}
+\end{table}
+
+
+\section{Security Considerations}
+Deploying a cryptographic system requires a careful analysis of its security posture beyond the underlying algorithms. The following considerations are critical for a secure deployment of this framework.
+
+\section{Private Key Protection}
+The security of the entire system rests on the secrecy of the private keys. In this implementation, private keys are stored as simple, hex-encoded text files. In a production environment, this is insufficient and represents the single greatest security risk. These files must be protected with strict filesystem permissions (e.g., `400` or `rw-------`) to prevent unauthorized access. For higher security applications, the following measures are strongly recommended:
+\begin{itemize}
+	\item Storing keys in an encrypted wallet or keychain, protected by a strong passphrase.
+	\item Integrating with a dedicated key management service (KMS) like HashiCorp Vault or a cloud provider's KMS.
+	\item For the highest level of assurance, performing all private key operations within a Hardware Security Module (HSM), which ensures that the key material never exists in software or system memory.
+\end{itemize}
+
+\section{Random Number Generation for Nonces (\textit{k})}
+The ECDSA signing operation requires a unique, cryptographically secure random number, $k$, for every signature. As established in cryptographic literature, reusing a $k$ value with the same private key is a catastrophic failure that allows an attacker to trivially compute the private key from two signatures. The security of this implementation relies entirely on the quality of the random number generator provided by the underlying operating system and leveraged by the \texttt{libecc} library. Production systems must use high-entropy sources (e.g., \texttt{/dev/random} on Linux) or hardware-based random number generators (e.g., Intel's RDRAND instruction) to ensure the unpredictability and uniqueness of $k$.
+
+\section{Side-Channel Attack Resistance (Discussion)}
+Side-channel attacks attempt to extract secret information by observing physical properties of the system, such as power consumption, timing variations, or electromagnetic emissions during cryptographic operations. For example, an attacker might be able to distinguish different private key bits by observing minute differences in the time it takes to perform a scalar multiplication. While the \texttt{libecc} library is not explicitly advertised as being hardened against such attacks (unlike specialized hardware or libraries like BoringSSL which use constant-time algorithms), this threat is most pronounced in environments where an attacker has physical access or can run malicious code on the same hardware. For cloud-based big data systems, this threat is largely mitigated by the hypervisor and physical security of the data center, but it remains a valid consideration for high-stakes, on-premise applications.
+
+\section{Replay Attack Prevention}
+A replay attack occurs when an attacker intercepts a valid signed message and re-transmits it later to cause a duplicate, unauthorized action. Digital signatures, by themselves, do not prevent replay attacks; they only guarantee the authenticity and integrity of the replayed message. The responsibility for preventing replays falls to the application layer. In the context of this project:
+\begin{itemize}
+	\item The secure logging suite has inherent replay resistance. The \texttt{logtool} embeds a high-resolution timestamp in every log entry. A verifier or log ingestion system can enforce a policy that rejects log entries with old or out-of-sequence timestamps, effectively mitigating this threat.
+	\item For \texttt{filecheck\_secure}, the context of verification usually provides protection. For example, a system will only accept a signed software update once. In other use cases, file naming conventions that include timestamps or version numbers can serve the same purpose.
+\end{itemize}

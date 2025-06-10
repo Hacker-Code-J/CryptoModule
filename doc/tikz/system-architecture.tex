@@ -1,0 +1,86 @@
+\begin{figure}[h!]
+	\centering
+	\begin{tikzpicture}[
+		% Define styles for the nodes and layers
+		layer_box/.style={
+			rectangle, 
+			draw, 
+			thick, 
+			fill=blue!5, 
+			text width=0.95\textwidth, 
+			minimum height=3.5cm, 
+			align=left,
+			rounded corners=5pt,
+			drop shadow={opacity=0.5}
+		},
+		app_node/.style={
+			rectangle, 
+			draw, 
+			thick,
+			fill=green!15, 
+			text centered,
+			font=\sffamily,
+			minimum height=1cm,
+			rounded corners=3pt
+		},
+		data_node/.style={
+			trapezium, 
+			trapezium left angle=70, 
+			trapezium right angle=110,
+			draw, 
+			thick,
+			fill=orange!20,
+			text centered,
+			font=\sffamily,
+			minimum height=1cm,
+			drop shadow
+		},
+		arrow_style/.style={
+			-latex, 
+			thick,
+			draw=black!70
+		},
+		]
+		
+		% ----- Nodes -----
+		% Define the three main layers
+		\node[layer_box] (interface_layer) at (0, 0) {};
+		\node[layer_box] (logic_layer) at (0, -4.5) {};
+		\node[layer_box] (crypto_layer) at (0, -9) {};
+		\node[] at (-4.85, 2) {\textbf{Data I/O and Interface Layer}};
+		\node[] at (-5.2, -2.5) {\textbf{Application Logic Layer}};
+		\node[] at (-4.6, -7) {\textbf{Cryptographic Primitives Layer}};
+		
+		% Components for the Interface Layer
+		\node[data_node] (cli) at (-3, 1) {Command-Line Interface};
+		\node[data_node] (files) at (0, 0) {Data Files \& Key Files};
+		\node[data_node] (logs) at (3.5, -1) {Log Streams (stdin/out)};
+		
+		% Components for the Application Logic Layer
+		\node[app_node, text width=3.5cm] (filecheck) at (-5.5, -4.5) {\texttt{filecheck\_secure}};
+		\node[app_node, text width=3.5cm] (logtool) at (00, -4.5) {\texttt{logtool}};
+		\node[app_node, text width=3.5cm] (logagg) at (5.5, -4.5) {\texttt{logaggregator}};
+		
+		% Components for the Cryptographic Primitives Layer
+		\node[app_node, fill=blue!20, text width=10cm, align=center] (libecc) at (0, -9) {\textbf{Core Library}\\ (\texttt{libarith.a}, \texttt{libec.a}, \texttt{libsig.a})};
+%		\node[font=\sffamily\small] at (0, -9.25) {};
+		
+		% ----- Arrows -----
+		% Arrows from data sources to the application logic layer
+%		\draw[arrow_style, red, out=180, in=180] (cli.west) node[font=\small\itshape] {
+%		%	User Commands
+%		} to (filecheck.west) ;
+%		\draw[arrow_style, red, out=180, in=90] (files.west) to (filecheck.north);
+%		\draw[arrow_style, red] (files.south) -- (logtool.north);
+%		\draw[arrow_style, red, out=0, in=90] (logs.east) to (logagg.north) node[midway, right, font=\small\itshape] {
+%%			Piped Data
+%		};
+		
+		% Arrows showing the flow between layers
+		\draw[arrow_style, <->, line width=1.5pt] (logic_layer.north) -- (interface_layer.south) node[midway, right, font=\bfseries] {Data Handling};
+		\draw[arrow_style, <->, line width=1.5pt] (crypto_layer.north) -- (logic_layer.south) node[midway, right, font=\bfseries] {Cryptographic API Calls};
+		
+	\end{tikzpicture}
+	\caption{\textbf{System Architecture.}\; The framework is stratified into three distinct layers, ensuring a separation of concerns between user interaction, application business logic, and low-level cryptographic operations.}
+	\label{fig:architecture}
+\end{figure}

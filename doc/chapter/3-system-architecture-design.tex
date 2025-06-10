@@ -1,0 +1,63 @@
+\chapter{System Architecture and Design}
+This chapter outlines the high-level design of the framework, detailing its core components, the technology stack, the primary design goals that guided development, and the rationale for the specific cryptographic parameters selected.
+
+\section{Core Components}
+The system is designed as a layered architecture to promote modularity and a clear separation of concerns. It consists of three primary logical layers: the Cryptographic Primitives Layer, the Application Logic Layer, and the Data I/O and Interface Layer. This structure, illustrated in Figure \ref{fig:architecture}, ensures that the complex cryptographic operations are neatly encapsulated and abstracted away from the higher-level application functionality.
+
+\input{tikz/system-architecture}
+
+\begin{figure}[h!]
+	\centering
+	% You would create and include a diagram file, e.g., architecture.png
+	% For now, a placeholder is used.
+	\framebox[0.9\textwidth]{\parbox{0.85\textwidth}{
+			\centering
+			\vspace{3cm}
+			\textbf{Figure Placeholder: System Architecture Diagram} \\
+			\vspace{0.5cm}
+			\textit{This diagram would show the three layers:
+				1. Data/Interface Layer (CLI, Files, Logs) at the top.
+				2. Application Logic Layer (`filecheck\_secure`, `logtool`, etc.) in the middle.
+				3. Cryptographic Primitives Layer (`libecc`) at the bottom.}
+			\vspace{3cm}
+	}}
+	\caption{Layered System Architecture.}
+	\label{fig:architecture}
+\end{figure}
+
+\begin{itemize}
+	\item \textbf{Cryptographic Primitives Layer:} This is the lowest layer of the stack, provided entirely by the \texttt{libecc} library. It is responsible for all fundamental cryptographic operations, including elliptic curve arithmetic, key pair generation, hash computation (SHA-256), and the core ECDSA signing and verification algorithms. This layer abstracts the complex mathematics of cryptography into a stable, verifiable API.
+	
+	\item \textbf{Application Logic Layer:} This intermediate layer contains the core logic for the \texttt{filecheck\_secure} and secure logging applications. It orchestrates the cryptographic operations exposed by the layer below to achieve its functional goals. For example, the `do\_sign` function in \texttt{filecheck\_secure} coordinates the process of hashing a file and then passing the resulting digest to the \texttt{libecc} signing function.
+	
+	\item \textbf{Data I/O and Interface Layer:} This is the highest layer, responsible for all interactions with the outside world. This includes parsing command-line arguments, reading and writing files from the filesystem (keys, signatures, and data files), and processing standard input/output streams for the logging suite. It ensures that data is correctly formatted and passed to the application logic layer.
+\end{itemize}
+
+\section{Technology Stack}
+The selection of technologies was driven by the core requirements of performance, portability, and low-level system control.
+\begin{itemize}
+	\item \textbf{Programming Language: C (C99 Standard):} The C language was chosen for its performance, minimal runtime overhead, and direct memory management capabilities, which are critical for high-throughput data processing. Its ubiquity ensures maximum portability across POSIX-compliant operating systems commonly used in big data environments, such as Linux.
+	\item \textbf{Cryptographic Library: \texttt{libecc}:} As detailed in the previous section, \texttt{libecc} provides the necessary cryptographic functions in a modular and configurable C-based package.
+	\item \textbf{Build System: GCC and Make:} The standard GNU Compiler Collection (GCC) and Make are used for compilation and dependency management, ensuring a simple and universally understood build process.
+\end{itemize}
+
+\section{Design Goals}
+The design of both applications was guided by three fundamental principles.
+
+\subsection{Security and Robustness}
+Security is the paramount concern. This was achieved by exclusively using well-vetted, industry-standard cryptographic algorithms and parameters. The implementation avoids creating any custom cryptographic primitives ("rolling your own crypto") and instead relies entirely on the \texttt{libecc} library. Robustness is addressed through comprehensive error handling at every stage, from command-line parsing to file I/O and cryptographic operations, ensuring that the applications fail safely and provide clear diagnostic messages.
+
+\subsection{Performance and Scalability}
+To be viable in big data contexts, the tools must be highly performant. The use of compiled C code minimizes execution overhead. For the \texttt{filecheck\_secure} application, a critical design choice was the implementation of a streaming hash mechanism. The application reads and hashes large files in small, manageable chunks (e.g., 4096 bytes) rather than loading the entire file into memory. This approach ensures that the tools can process files of virtually any size with a minimal and constant memory footprint, making them highly scalable.
+
+\subsection{Modularity and Usability}
+The system is designed to be both modular and easy to use. The layered architecture separates cryptographic logic from application logic, making the code easier to maintain and audit. From a user's perspective, both applications are exposed as simple, self-contained command-line utilities. This design choice makes them trivial to integrate into existing shell scripts, cron jobs, or automated data processing workflows (e.g., Apache Airflow, shell-based ETL scripts), providing a low barrier to adoption for data engineering teams.
+
+\section{Cryptographic Parameter Selection}
+The choice of cryptographic parameters is fundamental to the security of the entire system. The selected parameters represent a modern, conservative choice that balances strong security with high performance.
+
+\subsection{Curve: NIST P-256 (SECP256R1)}
+The SECP256R1 elliptic curve, also known as NIST P-256 or prime256v1, was selected for this project. It is one of the curves standardized by the National Institute of Standards and Technology (NIST) in FIPS 186-4 and is the most widely used curve for commercial applications. It offers a 128-bit security level, which is considered secure against all known classical and quantum attacks for the foreseeable future. Its widespread adoption means it has been subject to extensive public scrutiny and is highly optimized in most cryptographic libraries, including \texttt{libecc}.
+
+\subsection{Hash Algorithm: SHA-256}
+The Secure Hash Algorithm 2 (SHA-2) with a 256-bit digest was chosen as the companion hash function. SHA-256 provides a security level that is commensurate with the 128-bit security of the P-256 curve. It is a FIPS-validated standard and remains a trusted workhorse for digital signatures, message authentication codes, and other cryptographic protocols. The streaming interface provided by \texttt{libecc} for SHA-256 was a key factor in its selection, enabling the efficient processing of large files as required by the project's design goals.
